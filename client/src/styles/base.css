@@ -1,0 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600&family=Space+Grotesk:wght@400;500;600&display=swap');
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  color-scheme: light;
+  --bg-1: #f7f3e9;
+  --bg-2: #e8f1ff;
+  --bg-3: #fef3c7;
+  --ink-1: #1f2933;
+  --ink-2: #5b6472;
+  --accent-1: #f97316;
+  --accent-2: #0ea5e9;
+  --accent-3: #f43f5e;
+  --card: #ffffff;
+  --stroke: rgba(31, 41, 51, 0.12);
+  --soft: rgba(255, 255, 255, 0.7);
+  font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, var(--bg-3), transparent 55%),
+    linear-gradient(130deg, var(--bg-1), var(--bg-2));
+  color: var(--ink-1);
+}
+
+#app {
+  min-height: 100vh;
+}
+
+button {
+  font: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
