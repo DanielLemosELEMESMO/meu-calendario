@@ -43,3 +43,9 @@ Este documento define um conjunto de diretrizes e padrões que o agente de IA de
 - **Processo:**
     - `feat:`: A implementação de uma nova feature deve incluir a criação de testes que validem seu comportamento.
     - `fix:`: Uma correção de bug deve, idealmente, ser acompanhada de um teste de regressão que falharia sem a correção e passa com ela.
+
+## 6. Ciclo de Desenvolvimento de Versão (CDV)
+
+O projeto segue um ciclo de desenvolvimento rigoroso para cada nova versão, focado em planejamento, qualidade (SOLID) e rastreabilidade.
+
+A metodologia completa está detalhada no documento [**DEVELOPMENT_METHODOLOGY.md**](./DEVELOPMENT_METHODOLOGY.md). É obrigatório seguir as fases de Planejamento, Implementação, Revisão e Lançamento descritas nele para todas as entregas de novas versões.
