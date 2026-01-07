@@ -115,7 +115,11 @@ export default function MonthView({
                   >
                     <button
                       type="button"
-                      className="month-event"
+                      className={
+                        selectedId === event.id
+                          ? 'month-event month-event-selected'
+                          : 'month-event'
+                      }
                       onClick={() => {
                         if (closeTimerRef.current) {
                           window.clearTimeout(closeTimerRef.current)

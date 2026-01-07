@@ -15,6 +15,7 @@ export default function FocusView({
   referenceDate,
 }: FocusViewProps) {
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const days = useMemo(() => {
     const today = startOfDay(referenceDate)
@@ -48,6 +49,30 @@ export default function FocusView({
     return undefined
   }, [events, referenceDate])
 
+  useEffect(() => {
+    if (!selectedId) {
+      return
+    }
+
+    const safeId =
+      typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+        ? CSS.escape(selectedId)
+        : selectedId.replace(/"/g, '\\"')
+
+    const handler = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null
+      if (!target) {
+        return
+      }
+      if (!target.closest(`[data-event-id="${safeId}"]`)) {
+        setSelectedId(null)
+      }
+    }
+
+    document.addEventListener('pointerdown', handler)
+    return () => document.removeEventListener('pointerdown', handler)
+  }, [selectedId])
+
   return (
     <section className="focus-view">
       {days.map((day, index) => (
@@ -57,6 +82,8 @@ export default function FocusView({
           date={day.date}
           events={eventsByDay[index]}
           highlightId={highlightedId}
+          selectedId={selectedId}
+          onSelectEvent={setSelectedId}
           onToggleComplete={onToggleComplete}
         />
       ))}

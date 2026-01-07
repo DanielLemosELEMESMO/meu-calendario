@@ -101,7 +101,11 @@ export default function WeekView({
                     data-event-id={event.id}
                   >
                     <button
-                      className="week-event"
+                      className={
+                        selectedId === event.id
+                          ? 'week-event week-event-selected'
+                          : 'week-event'
+                      }
                       type="button"
                       onClick={() => {
                         if (closeTimerRef.current) {

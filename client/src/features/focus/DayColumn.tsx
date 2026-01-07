@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
+import type { CSSProperties } from 'react'
 import EventCard from '../../components/EventCard'
 import type { CalendarEvent } from '../../models/event'
 import { withDates } from '../../models/event'
@@ -17,6 +18,8 @@ type DayColumnProps = {
   date: Date
   events: CalendarEvent[]
   highlightId: string | null
+  selectedId: string | null
+  onSelectEvent: (eventId: string | null) => void
   onToggleComplete: (eventId: string) => void
 }
 
@@ -25,6 +28,8 @@ export default function DayColumn({
   date,
   events,
   highlightId,
+  selectedId,
+  onSelectEvent,
   onToggleComplete,
 }: DayColumnProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -75,15 +80,47 @@ export default function DayColumn({
               const startMinutes = minutesSinceStart(event.start)
               const endMinutes = minutesSinceStart(event.end)
               const top = startMinutes * PIXELS_PER_MINUTE
-              const height = Math.max(36, (endMinutes - startMinutes) * PIXELS_PER_MINUTE)
+              const durationMinutes = Math.max(0, endMinutes - startMinutes)
+              const height = Math.max(24, durationMinutes * PIXELS_PER_MINUTE)
+              const density =
+                durationMinutes < 20
+                  ? 'short'
+                  : durationMinutes < 45
+                    ? 'medium'
+                    : 'long'
               const isHighlighted = highlightId === event.id
+              const isExpanded = selectedId === event.id
               return (
                 <div
                   key={event.id}
-                  className={isHighlighted ? 'event-wrap event-pulse' : 'event-wrap'}
-                  style={{ top: `${top}px`, height: `${height}px` }}
+                  className={[
+                    'event-wrap',
+                    isHighlighted ? 'event-pulse' : '',
+                    isExpanded ? 'event-expanded-wrap' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  data-event-id={event.id}
+                  style={
+                    {
+                      top: `${top}px`,
+                      ['--event-height' as string]: `${height}px`,
+                      ['--event-expanded-height' as string]: `${Math.max(
+                        height,
+                        120,
+                      )}px`,
+                    } as CSSProperties
+                  }
                 >
-                  <EventCard event={event} onToggleComplete={onToggleComplete} />
+                  <EventCard
+                    event={event}
+                    density={density}
+                    isExpanded={isExpanded}
+                    onSelect={(eventId) =>
+                      onSelectEvent(isExpanded ? null : eventId)
+                    }
+                    onToggleComplete={onToggleComplete}
+                  />
                 </div>
               )
             })}

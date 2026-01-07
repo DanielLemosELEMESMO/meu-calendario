@@ -1,4 +1,4 @@
-.app {
+﻿.app {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -46,7 +46,7 @@
   border-radius: 999px;
   font-weight: 600;
   color: var(--ink-2);
-  transition: all 0.2s ease;
+  transition: all 0.1s ease;
 }
 
 .tab-active {
@@ -105,7 +105,7 @@
 
 .day-grid {
   position: relative;
-  padding-left: 48px;
+  padding-left: 40px;
 }
 
 .hour-row {
@@ -129,18 +129,23 @@
   height: 2px;
   background: linear-gradient(90deg, var(--accent-2), transparent);
   box-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
+  z-index: 5;
 }
 
 .events-layer {
   position: absolute;
   inset: 0;
   padding-left: 48px;
+  z-index: 2;
 }
 
 .event-wrap {
   position: absolute;
-  left: 0;
-  right: 16px;
+  left: 18px;
+  right: 10px;
+  overflow: visible;
+  height: var(--event-height);
+  transition: height 0.1s ease, left 0.1s ease, right 0.1s ease;
 }
 
 .event-card {
@@ -153,7 +158,16 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.event-expanded-wrap {
+  z-index: 20;
+  height: var(--event-expanded-height);
+  left: 12px;
+  right: 6px;
 }
 
 .event-card:hover {
@@ -167,6 +181,7 @@
   align-items: center;
   font-size: 12px;
   color: var(--ink-2);
+  transition: opacity 0.1s ease;
 }
 
 .event-time {
@@ -182,7 +197,7 @@
   place-items: center;
   font-size: 12px;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.1s ease;
 }
 
 .event-card:hover .event-check,
@@ -198,6 +213,11 @@
   justify-content: space-between;
   align-items: center;
   gap: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  transition: opacity 0.1s ease;
 }
 
 .event-checkmark {
@@ -211,13 +231,52 @@
   color: var(--ink-2);
   opacity: 0;
   max-height: 0;
-  transition: opacity 0.2s ease, max-height 0.2s ease;
+  transition: opacity 0.1s ease, max-height 0.1s ease;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .event-card:hover .event-description,
 .event-card.event-active .event-description {
   opacity: 1;
   max-height: 200px;
+}
+
+.event-short .event-header,
+.event-short .event-title {
+  opacity: 0;
+}
+
+.event-long .event-description {
+  opacity: 1;
+  max-height: 80px;
+}
+
+.event-expanded {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 16px 34px rgba(31, 41, 51, 0.2);
+}
+
+.event-expanded:hover {
+  transform: translateY(-3px) scale(1.015);
+  box-shadow: 0 18px 38px rgba(31, 41, 51, 0.24);
+}
+
+.event-expanded .event-title {
+  -webkit-line-clamp: 2;
+}
+
+.event-expanded .event-description {
+  opacity: 1;
+  max-height: 260px;
+  -webkit-line-clamp: 4;
+}
+
+.event-short.event-expanded .event-header,
+.event-short.event-expanded .event-title {
+  opacity: 1;
 }
 
 .event-active {
@@ -316,6 +375,12 @@
   font-size: 12px;
   width: 100%;
   text-align: left;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.week-event-selected {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 10px 18px rgba(31, 41, 51, 0.15);
 }
 
 .week-event-title {
@@ -380,6 +445,12 @@
   padding: 4px 6px;
   border-radius: 10px;
   text-align: left;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.month-event-selected {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 10px 18px rgba(31, 41, 51, 0.15);
 }
 
 .month-more {
@@ -397,11 +468,11 @@
   box-shadow: 0 20px 40px rgba(31, 41, 51, 0.2);
   padding: 14px;
   z-index: 10;
-  animation: pop 0.18s ease-out;
+  animation: pop 0.1s ease-out;
 }
 
 .event-popover.popover-exit {
-  animation: pop-out 0.18s ease-in forwards;
+  animation: pop-out 0.1s ease-in forwards;
 }
 
 .popover-right {
@@ -515,3 +586,4 @@
     grid-template-columns: repeat(1, minmax(120px, 1fr));
   }
 }
+

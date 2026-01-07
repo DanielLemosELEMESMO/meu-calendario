@@ -1,32 +1,51 @@
 import type { CalendarEventWithDates } from '../models/event'
 import { formatTimeRange, isNowWithin } from '../utils/dates'
 
+type EventDensity = 'short' | 'medium' | 'long'
+
 type EventCardProps = {
   event: CalendarEventWithDates
+  density: EventDensity
+  isExpanded: boolean
+  onSelect: (id: string) => void
   onToggleComplete: (id: string) => void
 }
 
-export default function EventCard({ event, onToggleComplete }: EventCardProps) {
+export default function EventCard({
+  event,
+  density,
+  isExpanded,
+  onSelect,
+  onToggleComplete,
+}: EventCardProps) {
   const isActive = isNowWithin(event.start, event.end)
-
   return (
     <article
       className={[
         'event-card',
         event.completed ? 'event-completed' : '',
         isActive ? 'event-active' : '',
+        density === 'short' ? 'event-short' : '',
+        density === 'long' ? 'event-long' : '',
+        isExpanded ? 'event-expanded' : '',
       ]
         .filter(Boolean)
         .join(' ')}
       style={{ borderColor: event.color || 'var(--accent-2)' }}
+      onClick={() => onSelect(event.id)}
     >
       <header className="event-header">
         <span className="event-time">{formatTimeRange(event.start, event.end)}</span>
         <button
           className="event-check"
           type="button"
-          aria-label={event.completed ? 'Marcar como pendente' : 'Marcar como concluido'}
-          onClick={() => onToggleComplete(event.id)}
+          aria-label={
+            event.completed ? 'Marcar como pendente' : 'Marcar como concluido'
+          }
+          onClick={(eventClick) => {
+            eventClick.stopPropagation()
+            onToggleComplete(event.id)
+          }}
         >
           {event.completed ? 'V' : ' '}
         </button>
