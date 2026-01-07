@@ -77,10 +77,18 @@ export default function App() {
           />
         )}
         {activeView === 'week' && (
-          <WeekView events={events} referenceDate={referenceDate} />
+          <WeekView
+            events={events}
+            onToggleComplete={onToggleComplete}
+            referenceDate={referenceDate}
+          />
         )}
         {activeView === 'month' && (
-          <MonthView events={events} referenceDate={referenceDate} />
+          <MonthView
+            events={events}
+            onToggleComplete={onToggleComplete}
+            referenceDate={referenceDate}
+          />
         )}
       </main>
     </div>

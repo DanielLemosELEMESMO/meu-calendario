@@ -301,6 +301,10 @@
   gap: 8px;
 }
 
+.week-event-item {
+  position: relative;
+}
+
 .week-event {
   padding: 8px 10px;
   border-radius: 12px;
@@ -310,6 +314,8 @@
   justify-content: space-between;
   gap: 10px;
   font-size: 12px;
+  width: 100%;
+  text-align: left;
 }
 
 .week-event-title {
@@ -365,14 +371,98 @@
   color: var(--ink-2);
 }
 
+.month-event-item {
+  position: relative;
+}
+
 .month-event {
   background: #fef3c7;
   padding: 4px 6px;
   border-radius: 10px;
+  text-align: left;
 }
 
 .month-more {
   color: rgba(31, 41, 51, 0.5);
+}
+
+.event-popover {
+  position: absolute;
+  top: 0;
+  min-width: 240px;
+  max-width: 280px;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(31, 41, 51, 0.12);
+  box-shadow: 0 20px 40px rgba(31, 41, 51, 0.2);
+  padding: 14px;
+  z-index: 10;
+  animation: pop 0.18s ease-out;
+}
+
+.popover-right {
+  left: 100%;
+  margin-left: 12px;
+}
+
+.popover-left {
+  right: 100%;
+  margin-right: 12px;
+}
+
+.popover-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.popover-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.popover-time {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.popover-description {
+  font-size: 12px;
+  color: var(--ink-2);
+  margin: 10px 0 0;
+}
+
+.popover-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 12px;
+}
+
+.popover-action {
+  background: var(--ink-1);
+  color: #fff;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.popover-close {
+  font-size: 11px;
+  color: var(--ink-2);
+  padding: 4px 6px;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 900px) {
@@ -382,6 +472,16 @@
 
   .month-grid {
     grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+
+  .event-popover {
+    position: static;
+    margin-top: 8px;
+  }
+
+  .popover-right,
+  .popover-left {
+    margin: 8px 0 0;
   }
 }
 

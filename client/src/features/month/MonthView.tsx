@@ -1,4 +1,7 @@
+import { useMemo, useState } from 'react'
 import type { CalendarEvent } from '../../models/event'
+import { withDates } from '../../models/event'
+import EventPopover from '../../components/EventPopover'
 import {
   addDays,
   formatDayNumber,
@@ -9,10 +12,15 @@ import {
 
 type MonthViewProps = {
   events: CalendarEvent[]
+  onToggleComplete: (eventId: string) => void
   referenceDate: Date
 }
 
-export default function MonthView({ events, referenceDate }: MonthViewProps) {
+export default function MonthView({
+  events,
+  onToggleComplete,
+  referenceDate,
+}: MonthViewProps) {
   const firstDay = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1)
   const monthStart = startOfDay(firstDay)
   const monthEnd = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0)
@@ -21,6 +29,8 @@ export default function MonthView({ events, referenceDate }: MonthViewProps) {
   const cells = Array.from({ length: totalCells }).map((_, index) =>
     addDays(monthStart, index - startOffset),
   )
+  const eventDates = useMemo(() => events.map(withDates), [events])
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   return (
     <section className="month-view">
@@ -29,11 +39,12 @@ export default function MonthView({ events, referenceDate }: MonthViewProps) {
         <p>Uma leitura calma do mes, com destaque para dias carregados.</p>
       </header>
       <div className="month-grid">
-        {cells.map((date) => {
-          const dayEvents = events.filter((event) =>
-            isSameDay(new Date(event.start), date),
+        {cells.map((date, cellIndex) => {
+          const dayEvents = eventDates.filter((event) =>
+            isSameDay(event.start, date),
           )
           const isOutside = date.getMonth() !== referenceDate.getMonth()
+          const align = cellIndex % 7 > 3 ? 'left' : 'right'
           return (
             <div
               key={date.toISOString()}
@@ -47,9 +58,27 @@ export default function MonthView({ events, referenceDate }: MonthViewProps) {
               </div>
               <div className="month-day-events">
                 {dayEvents.slice(0, 2).map((event) => (
-                  <span key={event.id} className="month-event">
-                    {event.title}
-                  </span>
+                  <div key={event.id} className="month-event-item">
+                    <button
+                      type="button"
+                      className="month-event"
+                      onClick={() =>
+                        setSelectedId((current) =>
+                          current === event.id ? null : event.id,
+                        )
+                      }
+                    >
+                      {event.title}
+                    </button>
+                    {selectedId === event.id && (
+                      <EventPopover
+                        event={event}
+                        align={align}
+                        onClose={() => setSelectedId(null)}
+                        onToggleComplete={onToggleComplete}
+                      />
+                    )}
+                  </div>
                 ))}
                 {dayEvents.length > 2 && (
                   <span className="month-more">+{dayEvents.length - 2}</span>
