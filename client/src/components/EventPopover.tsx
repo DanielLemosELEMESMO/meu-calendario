@@ -4,6 +4,7 @@ import { formatTimeRange } from '../utils/dates'
 type EventPopoverProps = {
   event: CalendarEventWithDates
   align?: 'left' | 'right'
+  isClosing?: boolean
   onClose: () => void
   onToggleComplete: (id: string) => void
 }
@@ -11,11 +12,16 @@ type EventPopoverProps = {
 export default function EventPopover({
   event,
   align = 'right',
+  isClosing = false,
   onClose,
   onToggleComplete,
 }: EventPopoverProps) {
   return (
-    <div className={`event-popover popover-${align}`}>
+    <div
+      className={`event-popover popover-${align} ${
+        isClosing ? 'popover-exit' : ''
+      }`.trim()}
+    >
       <header className="popover-header">
         <div>
           <div className="popover-title">{event.title}</div>

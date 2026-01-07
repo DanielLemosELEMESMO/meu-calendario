@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CalendarEvent } from '../../models/event'
 import { withDates } from '../../models/event'
 import EventPopover from '../../components/EventPopover'
@@ -24,6 +24,56 @@ export default function WeekView({
   const days = Array.from({ length: 7 }).map((_, index) => addDays(start, index))
   const eventDates = useMemo(() => events.map(withDates), [events])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [closingId, setClosingId] = useState<string | null>(null)
+  const closeTimerRef = useRef<number | null>(null)
+
+  const requestClose = () => {
+    if (!selectedId) {
+      return
+    }
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current)
+    }
+    setClosingId(selectedId)
+    closeTimerRef.current = window.setTimeout(() => {
+      setSelectedId(null)
+      setClosingId(null)
+      closeTimerRef.current = null
+    }, 180)
+  }
+
+  useEffect(() => {
+    if (!selectedId) {
+      return
+    }
+
+    const safeId =
+      typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+        ? CSS.escape(selectedId)
+        : selectedId.replace(/"/g, '\\"')
+
+    const handler = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null
+      if (!target) {
+        return
+      }
+      if (!target.closest(`[data-event-id="${safeId}"]`)) {
+        requestClose()
+      }
+    }
+
+    document.addEventListener('pointerdown', handler)
+    return () => document.removeEventListener('pointerdown', handler)
+  }, [selectedId])
+
+  useEffect(
+    () => () => {
+      if (closeTimerRef.current) {
+        window.clearTimeout(closeTimerRef.current)
+      }
+    },
+    [],
+  )
 
   return (
     <section className="week-view">
@@ -45,15 +95,24 @@ export default function WeekView({
                   <span className="week-empty">Sem eventos</span>
                 )}
                 {dayEvents.map((event) => (
-                  <div key={event.id} className="week-event-item">
+                  <div
+                    key={event.id}
+                    className="week-event-item"
+                    data-event-id={event.id}
+                  >
                     <button
                       className="week-event"
                       type="button"
-                      onClick={() =>
+                      onClick={() => {
+                        if (closeTimerRef.current) {
+                          window.clearTimeout(closeTimerRef.current)
+                          closeTimerRef.current = null
+                        }
+                        setClosingId(null)
                         setSelectedId((current) =>
                           current === event.id ? null : event.id,
                         )
-                      }
+                      }}
                       style={{ borderColor: event.color || 'var(--accent-2)' }}
                     >
                       <span className="week-event-title">{event.title}</span>
@@ -66,7 +125,8 @@ export default function WeekView({
                       <EventPopover
                         event={event}
                         align={align}
-                        onClose={() => setSelectedId(null)}
+                        isClosing={closingId === event.id}
+                        onClose={requestClose}
                         onToggleComplete={onToggleComplete}
                       />
                     )}

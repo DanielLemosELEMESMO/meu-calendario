@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CalendarEvent } from '../../models/event'
 import { withDates } from '../../models/event'
 import EventPopover from '../../components/EventPopover'
@@ -31,6 +31,56 @@ export default function MonthView({
   )
   const eventDates = useMemo(() => events.map(withDates), [events])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [closingId, setClosingId] = useState<string | null>(null)
+  const closeTimerRef = useRef<number | null>(null)
+
+  const requestClose = () => {
+    if (!selectedId) {
+      return
+    }
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current)
+    }
+    setClosingId(selectedId)
+    closeTimerRef.current = window.setTimeout(() => {
+      setSelectedId(null)
+      setClosingId(null)
+      closeTimerRef.current = null
+    }, 180)
+  }
+
+  useEffect(() => {
+    if (!selectedId) {
+      return
+    }
+
+    const safeId =
+      typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+        ? CSS.escape(selectedId)
+        : selectedId.replace(/"/g, '\\"')
+
+    const handler = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null
+      if (!target) {
+        return
+      }
+      if (!target.closest(`[data-event-id="${safeId}"]`)) {
+        requestClose()
+      }
+    }
+
+    document.addEventListener('pointerdown', handler)
+    return () => document.removeEventListener('pointerdown', handler)
+  }, [selectedId])
+
+  useEffect(
+    () => () => {
+      if (closeTimerRef.current) {
+        window.clearTimeout(closeTimerRef.current)
+      }
+    },
+    [],
+  )
 
   return (
     <section className="month-view">
@@ -58,15 +108,24 @@ export default function MonthView({
               </div>
               <div className="month-day-events">
                 {dayEvents.slice(0, 2).map((event) => (
-                  <div key={event.id} className="month-event-item">
+                  <div
+                    key={event.id}
+                    className="month-event-item"
+                    data-event-id={event.id}
+                  >
                     <button
                       type="button"
                       className="month-event"
-                      onClick={() =>
+                      onClick={() => {
+                        if (closeTimerRef.current) {
+                          window.clearTimeout(closeTimerRef.current)
+                          closeTimerRef.current = null
+                        }
+                        setClosingId(null)
                         setSelectedId((current) =>
                           current === event.id ? null : event.id,
                         )
-                      }
+                      }}
                     >
                       {event.title}
                     </button>
@@ -74,7 +133,8 @@ export default function MonthView({
                       <EventPopover
                         event={event}
                         align={align}
-                        onClose={() => setSelectedId(null)}
+                        isClosing={closingId === event.id}
+                        onClose={requestClose}
                         onToggleComplete={onToggleComplete}
                       />
                     )}
