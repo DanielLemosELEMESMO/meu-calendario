@@ -20,7 +20,11 @@ export default function App() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [referenceDate] = useState(() => new Date())
 
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
   useEffect(() => {
+    if (!isAuthenticated) return
+
     const loadEvents = async () => {
       const now = referenceDate
       if (activeView === 'focus') {
@@ -43,7 +47,7 @@ export default function App() {
     }
 
     loadEvents()
-  }, [activeView, referenceDate])
+  }, [activeView, referenceDate, isAuthenticated])
 
   const onToggleComplete = async (eventId: string) => {
     const updated = await eventRepository.toggleComplete(eventId)
@@ -52,6 +56,21 @@ export default function App() {
     }
     setEvents((current) =>
       current.map((event) => (event.id === updated.id ? updated : event)),
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="app app-login">
+        <h1>MeuCalendario</h1>
+        <p>Faça login para continuar</p>
+        <a
+          href="http://localhost:3001/auth/google"
+          className="login-button"
+        >
+          Login com Google
+        </a>
+      </div>
     )
   }
 
