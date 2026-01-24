@@ -1,21 +1,30 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import DayColumn from './DayColumn'
-import type { CalendarEvent } from '../../models/event'
+import type { CalendarEvent, EventDraft } from '../../models/event'
 import { addDays, isSameDay, startOfDay } from '../../utils/dates'
+import EventFormPanel from '../../components/EventFormPanel'
 
 type FocusViewProps = {
   events: CalendarEvent[]
   onToggleComplete: (eventId: string) => void
   referenceDate: Date
+  onCreateEvent: (draft: EventDraft) => Promise<void>
 }
 
 export default function FocusView({
   events,
   onToggleComplete,
   referenceDate,
+  onCreateEvent,
 }: FocusViewProps) {
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [draft, setDraft] = useState<EventDraft | null>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [panelStyle, setPanelStyle] = useState<React.CSSProperties | undefined>(
+    undefined,
+  )
+  const [panelSide, setPanelSide] = useState<'left' | 'right'>('right')
 
   const days = useMemo(() => {
     const today = startOfDay(referenceDate)
@@ -74,19 +83,57 @@ export default function FocusView({
   }, [selectedId])
 
   return (
-    <section className="focus-view">
-      {days.map((day, index) => (
-        <DayColumn
-          key={day.label}
-          label={day.label}
-          date={day.date}
-          events={eventsByDay[index]}
-          highlightId={highlightedId}
-          selectedId={selectedId}
-          onSelectEvent={setSelectedId}
-          onToggleComplete={onToggleComplete}
+    <section className="view-with-panel view-floating" ref={containerRef}>
+      <div className="focus-view">
+        {days.map((day, index) => (
+          <DayColumn
+            key={day.label}
+            label={day.label}
+            date={day.date}
+            events={eventsByDay[index]}
+            highlightId={highlightedId}
+            selectedId={selectedId}
+            onSelectEvent={setSelectedId}
+            onToggleComplete={onToggleComplete}
+            draft={draft}
+            onDraftChange={setDraft}
+            onDraftSelect={() => setSelectedId(null)}
+            onDraftLayout={(rect) => {
+              if (!rect || !containerRef.current) {
+                return
+              }
+              const containerRect = containerRef.current.getBoundingClientRect()
+              const gap = 16
+              const availableRight = containerRect.right - rect.right
+              const availableLeft = rect.left - containerRect.left
+              const width = 280
+              const useRight = availableRight >= width + gap || availableRight >= availableLeft
+              const left = useRight
+                ? rect.right - containerRect.left + gap
+                : rect.left - containerRect.left - width - gap
+              const top = Math.max(0, rect.top - containerRect.top)
+              setPanelSide(useRight ? 'right' : 'left')
+              setPanelStyle({ left, top, width })
+            }}
+          />
+        ))}
+      </div>
+      {draft && (
+        <EventFormPanel
+          draft={draft}
+          onChange={setDraft}
+          onCancel={() => setDraft(null)}
+          onSave={async () => {
+            if (!draft.title.trim()) {
+              return
+            }
+            await onCreateEvent(draft)
+            setDraft(null)
+          }}
+          className={`floating panel-${panelSide}`}
+          style={panelStyle}
         />
-      ))}
+      )}
     </section>
   )
 }

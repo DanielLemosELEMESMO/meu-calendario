@@ -1,3 +1,3 @@
-import { MockEventRepository } from './MockEventRepository'
+import { ApiEventRepository } from './ApiEventRepository'
 
-export const eventRepository = new MockEventRepository()
+export const eventRepository = new ApiEventRepository()

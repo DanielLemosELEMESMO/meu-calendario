@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef } from 'react'
-import type { CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import EventCard from '../../components/EventCard'
-import type { CalendarEvent } from '../../models/event'
+import type { CalendarEvent, EventDraft } from '../../models/event'
 import { withDates } from '../../models/event'
 import {
   formatDayLabel,
@@ -12,6 +12,8 @@ import {
 
 const PIXELS_PER_MINUTE = 1.1
 const DAY_HEIGHT = 24 * 60 * PIXELS_PER_MINUTE
+const MIN_DURATION_MINUTES = 15
+const ROUND_STEP = 15
 
 type DayColumnProps = {
   label: string
@@ -21,6 +23,10 @@ type DayColumnProps = {
   selectedId: string | null
   onSelectEvent: (eventId: string | null) => void
   onToggleComplete: (eventId: string) => void
+  draft: EventDraft | null
+  onDraftChange: (draft: EventDraft | null) => void
+  onDraftSelect: () => void
+  onDraftLayout: (rect: DOMRect | null) => void
 }
 
 export default function DayColumn({
@@ -31,10 +37,17 @@ export default function DayColumn({
   selectedId,
   onSelectEvent,
   onToggleComplete,
+  draft,
+  onDraftChange,
+  onDraftSelect,
+  onDraftLayout,
 }: DayColumnProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  const gridRef = useRef<HTMLDivElement | null>(null)
   const dayStart = useMemo(() => startOfDay(date), [date])
   const isToday = isSameDay(date, new Date())
+  const [resizeMode, setResizeMode] = useState<'start' | 'end' | null>(null)
+  const draftRef = useRef<HTMLDivElement | null>(null)
 
   const eventsWithDates = useMemo(
     () => events.map(withDates),
@@ -54,6 +67,84 @@ export default function DayColumn({
     })
   }, [isToday])
 
+  useEffect(() => {
+    if (!draftRef.current || !draft) {
+      onDraftLayout(null)
+      return
+    }
+    onDraftLayout(draftRef.current.getBoundingClientRect())
+  }, [draft, onDraftLayout])
+
+  useEffect(() => {
+    if (!resizeMode || !draft || !gridRef.current) {
+      return
+    }
+
+    const previousSelect = document.body.style.userSelect
+    document.body.style.userSelect = 'none'
+
+    const grid = gridRef.current
+    const onMove = (event: PointerEvent) => {
+      const rect = grid.getBoundingClientRect()
+      const offsetY = Math.min(Math.max(0, event.clientY - rect.top), rect.height)
+      const minutes = Math.round(offsetY / PIXELS_PER_MINUTE / ROUND_STEP) * ROUND_STEP
+      const startMinutes = minutesSinceStart(draft.start)
+      const endMinutes = minutesSinceStart(draft.end)
+      if (resizeMode === 'start') {
+        const nextStart = Math.min(
+          Math.max(0, minutes),
+          endMinutes - MIN_DURATION_MINUTES,
+        )
+        const next = new Date(dayStart)
+        next.setMinutes(nextStart)
+        onDraftChange({ ...draft, start: next })
+      } else {
+        const nextEnd = Math.max(
+          Math.min(24 * 60, minutes),
+          startMinutes + MIN_DURATION_MINUTES,
+        )
+        const next = new Date(dayStart)
+        next.setMinutes(nextEnd)
+        onDraftChange({ ...draft, end: next })
+      }
+    }
+
+    const onUp = () => {
+      document.body.style.userSelect = previousSelect
+      setResizeMode(null)
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp, { once: true })
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+  }, [resizeMode, draft, dayStart, onDraftChange])
+
+  const handleGridPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.target instanceof HTMLElement) {
+      if (event.target.closest('.event-wrap') || event.target.closest('.draft-event')) {
+        return
+      }
+    }
+    if (!gridRef.current) return
+    const rect = gridRef.current.getBoundingClientRect()
+    const offsetY = Math.min(Math.max(0, event.clientY - rect.top), rect.height)
+    const minutes = Math.round(offsetY / PIXELS_PER_MINUTE / ROUND_STEP) * ROUND_STEP
+    const start = new Date(dayStart)
+    start.setMinutes(minutes)
+    const end = new Date(dayStart)
+    end.setMinutes(Math.min(24 * 60, minutes + 60))
+    onDraftChange({
+      id: `draft-${dayStart.getTime()}`,
+      title: '',
+      start,
+      end,
+    })
+    onDraftSelect()
+  }
+
   return (
     <section className="day-column">
       <header className="day-header">
@@ -61,7 +152,12 @@ export default function DayColumn({
         <span className="day-date">{formatDayLabel(date)}</span>
       </header>
       <div className="day-body" ref={scrollRef}>
-        <div className="day-grid" style={{ height: `${DAY_HEIGHT}px` }}>
+        <div
+          className="day-grid"
+          style={{ height: `${DAY_HEIGHT}px` }}
+          onPointerDown={handleGridPointerDown}
+          ref={gridRef}
+        >
           {Array.from({ length: 24 }).map((_, hour) => (
             <div key={hour} className="hour-row">
               <span className="hour-label">{hour.toString().padStart(2, '0')}</span>
@@ -124,6 +220,47 @@ export default function DayColumn({
                 </div>
               )
             })}
+            {draft && isSameDay(draft.start, date) && (
+              <div
+                className="event-wrap draft-event"
+                ref={draftRef}
+                style={
+                  {
+                    top: `${minutesSinceStart(draft.start) * PIXELS_PER_MINUTE}px`,
+                    ['--event-height' as string]: `${
+                      Math.max(
+                        MIN_DURATION_MINUTES,
+                        minutesSinceStart(draft.end) - minutesSinceStart(draft.start),
+                      ) * PIXELS_PER_MINUTE
+                    }px`,
+                  } as CSSProperties
+                }
+                onClick={(eventClick) => {
+                  eventClick.stopPropagation()
+                  onDraftSelect()
+                }}
+              >
+                <div className="draft-card">
+                  <span>{draft.title || 'Novo evento'}</span>
+                  <div
+                    className="draft-handle draft-handle-top"
+                    onPointerDown={(eventPointer) => {
+                      eventPointer.stopPropagation()
+                      eventPointer.preventDefault()
+                      setResizeMode('start')
+                    }}
+                  />
+                  <div
+                    className="draft-handle draft-handle-bottom"
+                    onPointerDown={(eventPointer) => {
+                      eventPointer.stopPropagation()
+                      eventPointer.preventDefault()
+                      setResizeMode('end')
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

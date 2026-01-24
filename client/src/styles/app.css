@@ -41,6 +41,23 @@
   box-shadow: 0 12px 30px rgba(31, 41, 51, 0.08);
 }
 
+.logout-button {
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: #fff;
+  color: var(--ink-2);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.logout-button:hover {
+  color: #fff;
+  background: var(--ink-1);
+  border-color: transparent;
+}
+
 .tab {
   padding: 10px 20px;
   border-radius: 999px;
@@ -57,6 +74,16 @@
 
 .app-main {
   flex-grow: 1;
+}
+
+.app-error {
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-weight: 600;
+  margin-bottom: 12px;
 }
 
 /* Estilos da Tela de Login */
@@ -89,6 +116,76 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 24px;
+}
+
+.view-with-panel {
+  position: relative;
+}
+
+.view-with-panel.view-floating {
+  display: block;
+}
+
+.event-form-panel {
+  background: var(--card);
+  border: 1px solid var(--stroke);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 24px 50px rgba(31, 41, 51, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.event-form-panel.floating {
+  position: absolute;
+  z-index: 30;
+  top: 0;
+}
+
+.event-form-panel h3 {
+  margin: 0;
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+}
+
+.event-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.event-form-field input,
+.event-form-field textarea {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  font-size: 14px;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.event-form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.event-form-cancel {
+  background: #f8fafc;
+  border: 1px solid var(--stroke);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 600;
+}
+
+.event-form-save {
+  background: var(--ink-1);
+  color: #fff;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-weight: 600;
 }
 
 .day-column {
@@ -165,6 +262,10 @@
   z-index: 2;
 }
 
+.week-day-grid .events-layer {
+  padding: 8px;
+}
+
 .event-wrap {
   position: absolute;
   left: 18px;
@@ -172,6 +273,46 @@
   overflow: visible;
   height: var(--event-height);
   transition: height 0.1s ease, left 0.1s ease, right 0.1s ease;
+}
+
+.week-day-grid .event-wrap {
+  left: 8px;
+  right: 8px;
+}
+
+.draft-event {
+  z-index: 8;
+}
+
+.draft-card {
+  height: 100%;
+  border-radius: 18px;
+  border: 2px dashed var(--accent-2);
+  background: rgba(14, 165, 233, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: var(--ink-1);
+  position: relative;
+}
+
+.draft-handle {
+  position: absolute;
+  left: 30%;
+  right: 30%;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent-2);
+  cursor: ns-resize;
+}
+
+.draft-handle-top {
+  top: -4px;
+}
+
+.draft-handle-bottom {
+  bottom: -4px;
 }
 
 .event-card {
@@ -361,61 +502,63 @@
 
 .week-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 16px;
+  grid-template-columns: 70px 1fr;
+  gap: 12px;
+  max-height: 70vh;
+  overflow: auto;
+}
+
+.week-time-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.week-time-slot {
+  height: calc(60px * 1.1);
+  position: relative;
+}
+
+.week-time-label {
+  position: sticky;
+  top: 0;
+  font-size: 11px;
+  color: rgba(31, 41, 51, 0.45);
+}
+
+.week-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(140px, 1fr));
+  gap: 10px;
 }
 
 .week-day {
-  padding: 16px;
-  border-radius: 18px;
-  background: #f8fafc;
+  border-radius: 16px;
   border: 1px solid rgba(31, 41, 51, 0.08);
-  min-height: 160px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.week-day-header {
-  font-weight: 600;
-}
-
-.week-day-events {
+  background: #f8fafc;
+  padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.week-event-item {
-  position: relative;
+.week-day-header {
+  font-weight: 600;
+  font-size: 13px;
 }
 
-.week-event {
-  padding: 8px 10px;
+.week-day-grid {
+  position: relative;
   border-radius: 12px;
   background: #fff;
-  border-left: 4px solid var(--accent-2);
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 12px;
-  width: 100%;
-  text-align: left;
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
-}
-
-.week-event-selected {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 10px 18px rgba(31, 41, 51, 0.15);
-}
-
-.week-event-title {
-  font-weight: 600;
-}
-
-.week-empty {
-  color: rgba(31, 41, 51, 0.45);
-  font-size: 12px;
+  overflow: hidden;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(60px * 1.1 - 1px),
+    rgba(31, 41, 51, 0.08) calc(60px * 1.1 - 1px),
+    rgba(31, 41, 51, 0.08) calc(60px * 1.1)
+  );
 }
 
 .month-grid {
@@ -582,8 +725,16 @@
     padding: 20px;
   }
 
+  .event-form-panel.floating {
+    position: static;
+  }
+
   .month-grid {
     grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+
+  .week-days {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
   }
 
   .event-popover {
@@ -611,5 +762,51 @@
   .month-grid {
     grid-template-columns: repeat(1, minmax(120px, 1fr));
   }
+
+  .week-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .week-time-column {
+    display: none;
+  }
+
+  .week-days {
+    grid-template-columns: repeat(1, minmax(140px, 1fr));
+  }
+}
+.day-grid,
+.week-day-grid,
+.draft-card {
+  user-select: none;
 }
 
+.event-form-panel.floating.panel-left {
+  animation: panel-left 0.12s ease-out;
+}
+
+.event-form-panel.floating.panel-right {
+  animation: panel-right 0.12s ease-out;
+}
+
+@keyframes panel-left {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes panel-right {
+  from {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

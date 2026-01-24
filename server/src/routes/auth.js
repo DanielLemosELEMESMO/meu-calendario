@@ -11,4 +11,7 @@ router.get('/google', authController.redirectToGoogle);
 // Recebe o código de autorização para ser trocado por tokens
 router.get('/google/callback', authController.handleGoogleCallback);
 
+// Logout: limpa cookie de sessao
+router.post('/logout', authController.logout);
+
 module.exports = router;

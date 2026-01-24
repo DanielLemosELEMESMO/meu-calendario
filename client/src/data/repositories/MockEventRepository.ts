@@ -38,4 +38,26 @@ export class MockEventRepository implements EventRepository {
     saveEventCache(nextEvents)
     return updated
   }
+
+  async create(payload: {
+    title: string
+    description?: string
+    start: string
+    end: string
+    calendarId?: string
+  }): Promise<CalendarEvent> {
+    const events = ensureEvents()
+    const created: CalendarEvent = {
+      id: `mock-${Date.now()}`,
+      title: payload.title,
+      description: payload.description,
+      start: payload.start,
+      end: payload.end,
+      calendarId: payload.calendarId ?? 'mock',
+      completed: false,
+    }
+    const nextEvents = [...events, created]
+    saveEventCache(nextEvents)
+    return created
+  }
 }
