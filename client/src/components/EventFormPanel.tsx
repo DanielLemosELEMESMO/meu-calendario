@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import type { EventDraft } from '../models/event'
 
 type EventFormPanelProps = {
@@ -37,12 +38,38 @@ export default function EventFormPanel({
   className,
   style,
 }: EventFormPanelProps) {
+  const titleRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!draft) return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+      const target = event.target as HTMLElement | null
+      const isInput =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      if (isInput) return
+      if (event.key.length !== 1) return
+      event.preventDefault()
+      const nextTitle = `${draft.title}${event.key}`
+      onChange({ ...draft, title: nextTitle })
+      titleRef.current?.focus()
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [draft, onChange])
+
   return (
     <aside className={['event-form-panel', className].filter(Boolean).join(' ')} style={style}>
       <h3>Novo evento</h3>
       <label className="event-form-field">
         <span>Titulo</span>
         <input
+          ref={titleRef}
           type="text"
           value={draft.title}
           onChange={(event) => onChange({ ...draft, title: event.target.value })}
