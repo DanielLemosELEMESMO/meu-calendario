@@ -19,6 +19,7 @@ export default function EventCard({
   onToggleComplete,
 }: EventCardProps) {
   const isActive = isNowWithin(event.start, event.end)
+  const timeLabel = formatTimeRange(event.start, event.end)
   return (
     <article
       className={[
@@ -34,28 +35,50 @@ export default function EventCard({
       style={{ borderColor: event.color || 'var(--accent-2)' }}
       onClick={() => onSelect(event.id)}
     >
-      <header className="event-header">
-        <span className="event-time">{formatTimeRange(event.start, event.end)}</span>
-        <button
-          className="event-check"
-          type="button"
-          aria-label={
-            event.completed ? 'Marcar como pendente' : 'Marcar como concluido'
-          }
-          onClick={(eventClick) => {
-            eventClick.stopPropagation()
-            onToggleComplete(event.id)
-          }}
-        >
-          {event.completed ? 'V' : ' '}
-        </button>
-      </header>
-      <h4 className="event-title">
-        {event.title}
-        {event.completed && <span className="event-checkmark">V</span>}
-      </h4>
-      {event.description && (
-        <p className="event-description">{event.description}</p>
+      {density !== 'long' ? (
+        <div className="event-compact">
+          <span className="event-compact-time">{timeLabel}</span>
+          <span className="event-compact-title">{event.title}</span>
+          <button
+            className="event-check"
+            type="button"
+            aria-label={
+              event.completed ? 'Marcar como pendente' : 'Marcar como concluido'
+            }
+            onClick={(eventClick) => {
+              eventClick.stopPropagation()
+              onToggleComplete(event.id)
+            }}
+          >
+            {event.completed ? 'V' : ' '}
+          </button>
+        </div>
+      ) : (
+        <>
+          <header className="event-header">
+            <span className="event-time">{timeLabel}</span>
+            <button
+              className="event-check"
+              type="button"
+              aria-label={
+                event.completed ? 'Marcar como pendente' : 'Marcar como concluido'
+              }
+              onClick={(eventClick) => {
+                eventClick.stopPropagation()
+                onToggleComplete(event.id)
+              }}
+            >
+              {event.completed ? 'V' : ' '}
+            </button>
+          </header>
+          <h4 className="event-title">
+            {event.title}
+            {event.completed && <span className="event-checkmark">V</span>}
+          </h4>
+          {event.description && (
+            <p className="event-description">{event.description}</p>
+          )}
+        </>
       )}
     </article>
   )

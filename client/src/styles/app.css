@@ -424,6 +424,29 @@
   transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
+.event-compact {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.event-compact-time {
+  font-weight: 600;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.event-compact-title {
+  font-weight: 600;
+  color: var(--ink-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .event-expanded-wrap {
   z-index: 20;
   height: var(--event-expanded-height);
@@ -505,8 +528,18 @@
 }
 
 .event-short .event-header,
-.event-short .event-title {
-  opacity: 0;
+.event-short .event-title,
+.event-short .event-description {
+  display: none;
+}
+
+.event-short .event-compact,
+.event-medium .event-compact {
+  align-items: center;
+}
+
+.event-medium .event-compact {
+  font-size: 12px;
 }
 
 .event-long .event-description {
