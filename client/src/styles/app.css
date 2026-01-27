@@ -418,7 +418,6 @@
   padding: 4px 14px 0 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.1s ease, box-shadow 0.1s ease;
