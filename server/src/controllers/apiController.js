@@ -218,6 +218,60 @@ exports.createEvent = async (req, res) => {
   }
 };
 
+exports.updateEvent = async (req, res) => {
+  const { id } = req.params;
+  const { title, description, start, end, calendarId, timeZone } = req.body || {};
+  if (!id) {
+    return res.status(400).json({ error: 'invalid_event' });
+  }
+
+  try {
+    const oauth2Client = await getAuthorizedClient(req.userId);
+    if (!oauth2Client) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+
+    const calendar = getCalendarClient(oauth2Client);
+    const requestBody = {};
+    if (title) requestBody.summary = title;
+    if (typeof description !== 'undefined') requestBody.description = description;
+    if (start) {
+      requestBody.start = { dateTime: start, timeZone };
+    }
+    if (end) {
+      requestBody.end = { dateTime: end, timeZone };
+    }
+
+    const response = await calendar.events.patch({
+      calendarId: calendarId || 'primary',
+      eventId: id,
+      requestBody,
+    });
+
+    const updated = response.data;
+    const startDate = parseGoogleDate(updated.start, false);
+    const endDate = parseGoogleDate(updated.end, true);
+    if (!startDate || !endDate) {
+      return res.status(500).json({ error: 'invalid_event' });
+    }
+
+    return res.json({
+      event: {
+        id: updated.id,
+        title: updated.summary || '(Sem titulo)',
+        description: updated.description || undefined,
+        start: startDate.toISOString(),
+        end: endDate.toISOString(),
+        calendarId: updated.organizer?.email || 'primary',
+        completed: false,
+      },
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar evento:', error);
+    return res.status(500).json({ error: 'server_error' });
+  }
+};
+
 exports.setEventStatus = async (req, res) => {
   const { eventId, completed } = req.body || {};
   if (!eventId || typeof completed !== 'boolean') {

@@ -87,28 +87,54 @@ export default function App() {
     )
   }
 
+  const toOffsetISOString = (date: Date) => {
+    const pad = (value: number) => value.toString().padStart(2, '0')
+    const year = date.getFullYear()
+    const month = pad(date.getMonth() + 1)
+    const day = pad(date.getDate())
+    const hours = pad(date.getHours())
+    const minutes = pad(date.getMinutes())
+    const offsetMinutes = -date.getTimezoneOffset()
+    const sign = offsetMinutes >= 0 ? '+' : '-'
+    const absOffset = Math.abs(offsetMinutes)
+    const offsetHours = pad(Math.floor(absOffset / 60))
+    const offsetMins = pad(absOffset % 60)
+    return `${year}-${month}-${day}T${hours}:${minutes}:00${sign}${offsetHours}:${offsetMins}`
+  }
+
   const onCreateEvent = async (draft: EventDraft) => {
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-    const toOffsetISOString = (date: Date) => {
-      const pad = (value: number) => value.toString().padStart(2, '0')
-      const year = date.getFullYear()
-      const month = pad(date.getMonth() + 1)
-      const day = pad(date.getDate())
-      const hours = pad(date.getHours())
-      const minutes = pad(date.getMinutes())
-      const offsetMinutes = -date.getTimezoneOffset()
-      const sign = offsetMinutes >= 0 ? '+' : '-'
-      const absOffset = Math.abs(offsetMinutes)
-      const offsetHours = pad(Math.floor(absOffset / 60))
-      const offsetMins = pad(absOffset % 60)
-      return `${year}-${month}-${day}T${hours}:${minutes}:00${sign}${offsetHours}:${offsetMins}`
-    }
     await eventRepository.create({
       title: draft.title,
       description: draft.description,
       start: toOffsetISOString(draft.start),
       end: toOffsetISOString(draft.end),
       calendarId: draft.calendarId,
+      timeZone,
+    })
+    await loadEvents()
+  }
+
+  const onUpdateEventTime = async (
+    eventId: string,
+    start: Date,
+    end: Date,
+    commit: boolean,
+  ) => {
+    setEvents((current) =>
+      current.map((event) =>
+        event.id === eventId
+          ? { ...event, start: start.toISOString(), end: end.toISOString() }
+          : event,
+      ),
+    )
+    if (!commit) {
+      return
+    }
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    await eventRepository.update(eventId, {
+      start: toOffsetISOString(start),
+      end: toOffsetISOString(end),
       timeZone,
     })
     await loadEvents()
@@ -174,6 +200,7 @@ export default function App() {
             onToggleComplete={onToggleComplete}
             referenceDate={referenceDate}
             onCreateEvent={onCreateEvent}
+            onUpdateEventTime={onUpdateEventTime}
           />
         )}
         {activeView === 'week' && (
@@ -182,6 +209,7 @@ export default function App() {
             onToggleComplete={onToggleComplete}
             referenceDate={referenceDate}
             onCreateEvent={onCreateEvent}
+            onUpdateEventTime={onUpdateEventTime}
           />
         )}
         {activeView === 'month' && (

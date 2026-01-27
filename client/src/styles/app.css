@@ -275,6 +275,18 @@
   transition: height 0.1s ease, left 0.1s ease, right 0.1s ease;
 }
 
+.event-ghost {
+  pointer-events: none;
+  z-index: 1;
+}
+
+.event-ghost-card {
+  height: 100%;
+  border-radius: 18px;
+  border: 2px dashed rgba(31, 41, 51, 0.25);
+  background: rgba(148, 163, 184, 0.12);
+}
+
 .week-day-grid .event-wrap {
   left: 8px;
   right: 8px;

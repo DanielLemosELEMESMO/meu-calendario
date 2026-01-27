@@ -60,4 +60,30 @@ export class MockEventRepository implements EventRepository {
     saveEventCache(nextEvents)
     return created
   }
+
+  async update(
+    eventId: string,
+    payload: {
+      title?: string
+      description?: string
+      start?: string
+      end?: string
+      calendarId?: string
+    },
+  ): Promise<CalendarEvent> {
+    const events = ensureEvents()
+    const index = events.findIndex((event) => event.id === eventId)
+    if (index === -1) {
+      throw new Error('Evento nao encontrado')
+    }
+    const updated: CalendarEvent = {
+      ...events[index],
+      ...payload,
+      completed: events[index].completed,
+    }
+    const nextEvents = [...events]
+    nextEvents[index] = updated
+    saveEventCache(nextEvents)
+    return updated
+  }
 }

@@ -9,6 +9,12 @@ type FocusViewProps = {
   onToggleComplete: (eventId: string) => void
   referenceDate: Date
   onCreateEvent: (draft: EventDraft) => Promise<void>
+  onUpdateEventTime: (
+    eventId: string,
+    start: Date,
+    end: Date,
+    commit: boolean,
+  ) => Promise<void>
 }
 
 export default function FocusView({
@@ -16,6 +22,7 @@ export default function FocusView({
   onToggleComplete,
   referenceDate,
   onCreateEvent,
+  onUpdateEventTime,
 }: FocusViewProps) {
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -148,6 +155,7 @@ export default function FocusView({
               setPanelSide(useRight ? 'right' : 'left')
               setPanelStyle({ left, top, width })
             }}
+            onEventTimeChange={onUpdateEventTime}
           />
         ))}
       </div>

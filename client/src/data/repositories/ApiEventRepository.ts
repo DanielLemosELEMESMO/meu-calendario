@@ -68,4 +68,24 @@ export class ApiEventRepository implements EventRepository {
     const created = (await response.json()) as { event: CalendarEvent }
     return created.event
   }
+
+  async update(
+    eventId: string,
+    payload: Partial<CreateEventPayload>,
+  ): Promise<CalendarEvent> {
+    const response = await fetch(`/api/events/${eventId}`, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (response.status === 401) {
+      throw new Error('unauthorized')
+    }
+    if (!response.ok) {
+      throw new Error('Falha ao atualizar evento.')
+    }
+    const updated = (await response.json()) as { event: CalendarEvent }
+    return updated.event
+  }
 }
