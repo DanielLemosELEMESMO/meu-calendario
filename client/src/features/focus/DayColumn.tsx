@@ -34,6 +34,12 @@ type DayColumnProps = {
     clientX: number
     clientY: number
   }) => void
+  onEventResizeStart: (payload: {
+    event: CalendarEventWithDates
+    mode: 'start' | 'end'
+    clientX: number
+    clientY: number
+  }) => void
   draggingEventId: string | null
 }
 
@@ -50,6 +56,7 @@ export default function DayColumn({
   onDraftSelect,
   onDraftLayout,
   onEventDragStart,
+  onEventResizeStart,
   draggingEventId,
 }: DayColumnProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -303,6 +310,34 @@ export default function DayColumn({
                     })
                   }}
                 >
+                  <div className="event-resize-handles">
+                    <div
+                      className="event-resize-handle event-resize-handle-top"
+                      onPointerDown={(eventPointer) => {
+                        eventPointer.stopPropagation()
+                        eventPointer.preventDefault()
+                        onEventResizeStart({
+                          event,
+                          mode: 'start',
+                          clientX: eventPointer.clientX,
+                          clientY: eventPointer.clientY,
+                        })
+                      }}
+                    />
+                    <div
+                      className="event-resize-handle event-resize-handle-bottom"
+                      onPointerDown={(eventPointer) => {
+                        eventPointer.stopPropagation()
+                        eventPointer.preventDefault()
+                        onEventResizeStart({
+                          event,
+                          mode: 'end',
+                          clientX: eventPointer.clientX,
+                          clientY: eventPointer.clientY,
+                        })
+                      }}
+                    />
+                  </div>
                   <EventCard
                     event={event}
                     density={density}

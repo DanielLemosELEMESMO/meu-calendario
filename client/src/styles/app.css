@@ -275,6 +275,42 @@
   transition: height 0.1s ease, left 0.1s ease, right 0.1s ease;
 }
 
+.event-resize-handles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.event-resize-handle {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(31, 41, 51, 0.4);
+  opacity: 0;
+  pointer-events: auto;
+  cursor: ns-resize;
+  transition: opacity 0.12s ease;
+}
+
+.event-resize-handle-top {
+  top: -4px;
+}
+
+.event-resize-handle-bottom {
+  bottom: -4px;
+}
+
+.event-wrap:hover .event-resize-handle {
+  opacity: 1;
+}
+
+.event-dragging .event-resize-handle {
+  opacity: 0;
+}
+
 .event-dragging {
   opacity: 0.35;
 }

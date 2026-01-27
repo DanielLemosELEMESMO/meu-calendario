@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import DayColumn from './DayColumn'
 import type { CalendarEvent, CalendarEventWithDates, EventDraft } from '../../models/event'
 import { withDates } from '../../models/event'
-import { addDays, addMinutes, isSameDay, startOfDay } from '../../utils/dates'
+import { addDays, addMinutes, isSameDay, minutesSinceStart, startOfDay } from '../../utils/dates'
 import EventFormPanel from '../../components/EventFormPanel'
 
 const PIXELS_PER_MINUTE = 1.1
@@ -43,6 +43,7 @@ export default function FocusView({
     event: CalendarEventWithDates
     grabOffsetMinutes: number
     durationMinutes: number
+    mode: 'move' | 'resize-start' | 'resize-end'
   } | null>(null)
   const latestRangeRef = useRef<{ start: Date; end: Date } | null>(null)
   const lastPointerRef = useRef<{ x: number; y: number } | null>(null)
@@ -179,18 +180,38 @@ export default function FocusView({
     const pointerMinutes =
       Math.round(offsetY / PIXELS_PER_MINUTE / ROUND_STEP) * ROUND_STEP
     const dragState = dragStateRef.current
-    let nextStartMinutes = pointerMinutes - dragState.grabOffsetMinutes
-    nextStartMinutes = Math.max(
-      0,
-      Math.min(24 * 60 - dragState.durationMinutes, nextStartMinutes),
-    )
+    const startMinutes = minutesSinceStart(dragState.event.start)
+    const endMinutes = minutesSinceStart(dragState.event.end)
+    let nextStartMinutes = startMinutes
+    let nextEndMinutes = endMinutes
+
+    if (dragState.mode === 'move') {
+      nextStartMinutes = pointerMinutes - dragState.grabOffsetMinutes
+      nextStartMinutes = Math.max(
+        0,
+        Math.min(24 * 60 - dragState.durationMinutes, nextStartMinutes),
+      )
+      nextEndMinutes = nextStartMinutes + dragState.durationMinutes
+    } else if (dragState.mode === 'resize-start') {
+      nextStartMinutes = Math.max(
+        0,
+        Math.min(endMinutes - 5, pointerMinutes),
+      )
+      nextEndMinutes = endMinutes
+    } else {
+      nextStartMinutes = startMinutes
+      nextEndMinutes = Math.min(24 * 60, Math.max(startMinutes + 5, pointerMinutes))
+    }
     const dateStamp = targetGrid.dataset.dateTs
-    const targetDayStart = dateStamp
+    const fallbackDayStart = dateStamp
       ? new Date(Number(dateStamp))
       : startOfDay(referenceDate)
+    const targetDayStart =
+      dragState.mode === 'move' ? fallbackDayStart : startOfDay(dragState.event.start)
     const nextStart = new Date(targetDayStart)
     nextStart.setMinutes(nextStartMinutes)
-    const nextEnd = addMinutes(nextStart, dragState.durationMinutes)
+    const nextEnd = new Date(targetDayStart)
+    nextEnd.setMinutes(nextEndMinutes)
     latestRangeRef.current = { start: nextStart, end: nextEnd }
 
     const left = rect.left - containerRect.left + FOCUS_LAYER_LEFT
@@ -200,7 +221,10 @@ export default function FocusView({
     )
     const top =
       rect.top - containerRect.top + nextStartMinutes * PIXELS_PER_MINUTE
-    const height = Math.max(24, dragState.durationMinutes * PIXELS_PER_MINUTE)
+    const height = Math.max(
+      24,
+      (nextEndMinutes - nextStartMinutes) * PIXELS_PER_MINUTE,
+    )
 
     const layer = dragLayerRef.current
     layer.style.display = 'block'
@@ -235,6 +259,28 @@ export default function FocusView({
       event: payload.event,
       grabOffsetMinutes: payload.grabOffsetMinutes,
       durationMinutes: payload.durationMinutes,
+      mode: 'move',
+    }
+    cancelDragRef.current = false
+    lastPointerRef.current = { x: payload.clientX, y: payload.clientY }
+    setDraggingEvent(payload.event)
+    setDraggingEventId(payload.event.id)
+    scheduleDragUpdate()
+  }
+
+  const handleEventResizeStart = (payload: {
+    event: CalendarEventWithDates
+    mode: 'start' | 'end'
+    clientX: number
+    clientY: number
+  }) => {
+    const startMinutes = minutesSinceStart(payload.event.start)
+    const endMinutes = minutesSinceStart(payload.event.end)
+    dragStateRef.current = {
+      event: payload.event,
+      grabOffsetMinutes: 0,
+      durationMinutes: Math.max(5, endMinutes - startMinutes),
+      mode: payload.mode === 'start' ? 'resize-start' : 'resize-end',
     }
     cancelDragRef.current = false
     lastPointerRef.current = { x: payload.clientX, y: payload.clientY }
@@ -331,6 +377,7 @@ export default function FocusView({
               setPanelStyle({ left, top, width })
             }}
             onEventDragStart={handleEventDragStart}
+            onEventResizeStart={handleEventResizeStart}
             draggingEventId={draggingEventId}
           />
         ))}
