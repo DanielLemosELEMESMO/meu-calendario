@@ -2,8 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import DayColumn from './DayColumn'
 import type { CalendarEvent, CalendarEventWithDates, EventDraft } from '../../models/event'
 import { withDates } from '../../models/event'
-import { addDays, isSameDay, startOfDay } from '../../utils/dates'
+import { addDays, addMinutes, isSameDay, startOfDay } from '../../utils/dates'
 import EventFormPanel from '../../components/EventFormPanel'
+
+const PIXELS_PER_MINUTE = 1.1
+const ROUND_STEP = 5
+const FOCUS_LAYER_LEFT = 36
+const FOCUS_LAYER_RIGHT = 10
 
 type FocusViewProps = {
   events: CalendarEvent[]
@@ -28,16 +33,32 @@ export default function FocusView({
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [draft, setDraft] = useState<EventDraft | null>(null)
-  const [previewRange, setPreviewRange] = useState<{
-    id: string
-    start: Date
-    end: Date
-  } | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [panelStyle, setPanelStyle] = useState<React.CSSProperties | undefined>(
     undefined,
   )
   const [panelSide, setPanelSide] = useState<'left' | 'right'>('right')
+  const dragLayerRef = useRef<HTMLDivElement | null>(null)
+  const dragStateRef = useRef<{
+    event: CalendarEventWithDates
+    grabOffsetMinutes: number
+    durationMinutes: number
+  } | null>(null)
+  const latestRangeRef = useRef<{ start: Date; end: Date } | null>(null)
+  const lastPointerRef = useRef<{ x: number; y: number } | null>(null)
+  const rafRef = useRef<number | null>(null)
+  const cancelDragRef = useRef(false)
+  const [draggingEvent, setDraggingEvent] = useState<CalendarEventWithDates | null>(
+    null,
+  )
+  const [draggingEventId, setDraggingEventId] = useState<string | null>(null)
+  const dragLabelRef = useRef<HTMLSpanElement | null>(null)
+
+  const formatTime = (date: Date) =>
+    `${date.getHours().toString().padStart(2, '0')}:${date
+      .getMinutes()
+      .toString()
+      .padStart(2, '0')}`
 
   useEffect(() => {
     if (!draft) {
@@ -81,24 +102,17 @@ export default function FocusView({
     ]
   }, [referenceDate])
 
-  const adjustedEvents: CalendarEventWithDates[] = useMemo(() => {
-    const base = events.map(withDates)
-    if (!previewRange) {
-      return base
-    }
-    return base.map((event) =>
-      event.id === previewRange.id
-        ? { ...event, start: previewRange.start, end: previewRange.end }
-        : event,
-    )
-  }, [events, previewRange])
+  const eventsWithDates = useMemo(
+    () => events.map(withDates),
+    [events],
+  )
 
   const eventsByDay = useMemo(
     () =>
       days.map(({ date }) =>
-        adjustedEvents.filter((event) => isSameDay(event.start, date)),
+        eventsWithDates.filter((event) => isSameDay(event.start, date)),
       ),
-    [days, adjustedEvents],
+    [days, eventsWithDates],
   )
 
   useEffect(() => {
@@ -140,6 +154,149 @@ export default function FocusView({
     return () => document.removeEventListener('pointerdown', handler)
   }, [selectedId])
 
+  const applyDragPosition = () => {
+    if (!containerRef.current || !dragLayerRef.current || !dragStateRef.current) {
+      return
+    }
+    if (!lastPointerRef.current) {
+      return
+    }
+    const { x, y } = lastPointerRef.current
+    const grids = Array.from(
+      containerRef.current.querySelectorAll<HTMLElement>('.day-grid'),
+    )
+    const targetGrid =
+      grids.find((item) => {
+        const rect = item.getBoundingClientRect()
+        return x >= rect.left && x <= rect.right
+      }) ?? grids[0]
+    if (!targetGrid) {
+      return
+    }
+    const rect = targetGrid.getBoundingClientRect()
+    const containerRect = containerRef.current.getBoundingClientRect()
+    const offsetY = Math.min(Math.max(0, y - rect.top), rect.height)
+    const pointerMinutes =
+      Math.round(offsetY / PIXELS_PER_MINUTE / ROUND_STEP) * ROUND_STEP
+    const dragState = dragStateRef.current
+    let nextStartMinutes = pointerMinutes - dragState.grabOffsetMinutes
+    nextStartMinutes = Math.max(
+      0,
+      Math.min(24 * 60 - dragState.durationMinutes, nextStartMinutes),
+    )
+    const dateStamp = targetGrid.dataset.dateTs
+    const targetDayStart = dateStamp
+      ? new Date(Number(dateStamp))
+      : startOfDay(referenceDate)
+    const nextStart = new Date(targetDayStart)
+    nextStart.setMinutes(nextStartMinutes)
+    const nextEnd = addMinutes(nextStart, dragState.durationMinutes)
+    latestRangeRef.current = { start: nextStart, end: nextEnd }
+
+    const left = rect.left - containerRect.left + FOCUS_LAYER_LEFT
+    const width = Math.max(
+      140,
+      rect.width - FOCUS_LAYER_LEFT - FOCUS_LAYER_RIGHT,
+    )
+    const top =
+      rect.top - containerRect.top + nextStartMinutes * PIXELS_PER_MINUTE
+    const height = Math.max(24, dragState.durationMinutes * PIXELS_PER_MINUTE)
+
+    const layer = dragLayerRef.current
+    layer.style.display = 'block'
+    layer.style.transform = `translate(${left}px, ${top}px)`
+    layer.style.width = `${width}px`
+    layer.style.height = `${height}px`
+    if (dragLabelRef.current) {
+      dragLabelRef.current.textContent = `${formatTime(nextStart)} - ${formatTime(
+        nextEnd,
+      )}`
+    }
+  }
+
+  const scheduleDragUpdate = () => {
+    if (rafRef.current) {
+      return
+    }
+    rafRef.current = window.requestAnimationFrame(() => {
+      rafRef.current = null
+      applyDragPosition()
+    })
+  }
+
+  const handleEventDragStart = (payload: {
+    event: CalendarEventWithDates
+    grabOffsetMinutes: number
+    durationMinutes: number
+    clientX: number
+    clientY: number
+  }) => {
+    dragStateRef.current = {
+      event: payload.event,
+      grabOffsetMinutes: payload.grabOffsetMinutes,
+      durationMinutes: payload.durationMinutes,
+    }
+    cancelDragRef.current = false
+    lastPointerRef.current = { x: payload.clientX, y: payload.clientY }
+    setDraggingEvent(payload.event)
+    setDraggingEventId(payload.event.id)
+    scheduleDragUpdate()
+  }
+
+  useEffect(() => {
+    if (!draggingEventId) {
+      return
+    }
+
+    const onMove = (event: PointerEvent) => {
+      lastPointerRef.current = { x: event.clientX, y: event.clientY }
+      scheduleDragUpdate()
+    }
+
+    const onUp = () => {
+      if (!cancelDragRef.current) {
+        const latest = latestRangeRef.current
+        if (latest && dragStateRef.current) {
+          onUpdateEventTime(
+            dragStateRef.current.event.id,
+            latest.start,
+            latest.end,
+            true,
+          )
+        }
+      }
+      cancelDragRef.current = false
+      dragStateRef.current = null
+      latestRangeRef.current = null
+      lastPointerRef.current = null
+      setDraggingEvent(null)
+      setDraggingEventId(null)
+      if (dragLayerRef.current) {
+        dragLayerRef.current.style.display = 'none'
+      }
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        cancelDragRef.current = true
+        onUp()
+      }
+    }
+
+    document.addEventListener('pointermove', onMove)
+    document.addEventListener('pointerup', onUp, { once: true })
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerup', onUp)
+      document.removeEventListener('keydown', onKeyDown)
+      if (rafRef.current) {
+        window.cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
+    }
+  }, [draggingEventId, onUpdateEventTime, referenceDate])
+
   return (
     <section className="view-with-panel view-floating" ref={containerRef}>
       <div className="focus-view">
@@ -173,12 +330,21 @@ export default function FocusView({
               setPanelSide(useRight ? 'right' : 'left')
               setPanelStyle({ left, top, width })
             }}
-            onEventTimeChange={onUpdateEventTime}
-            previewRange={previewRange}
-            onPreviewChange={setPreviewRange}
+            onEventDragStart={handleEventDragStart}
+            draggingEventId={draggingEventId}
           />
         ))}
       </div>
+      {draggingEvent && (
+        <div ref={dragLayerRef} className="drag-layer">
+          <div className="drag-layer-card">
+            <span className="drag-layer-title">
+              {draggingEvent.title || 'Novo evento'}
+            </span>
+            <span ref={dragLabelRef} className="drag-layer-time" />
+          </div>
+        </div>
+      )}
       {draft && (
         <EventFormPanel
           draft={draft}

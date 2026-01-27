@@ -27,16 +27,14 @@ type DayColumnProps = {
   onDraftChange: (draft: EventDraft | null) => void
   onDraftSelect: () => void
   onDraftLayout: (rect: DOMRect | null) => void
-  onEventTimeChange: (
-    eventId: string,
-    start: Date,
-    end: Date,
-    commit: boolean,
-  ) => void
-  previewRange: { id: string; start: Date; end: Date } | null
-  onPreviewChange: (
-    range: { id: string; start: Date; end: Date } | null,
-  ) => void
+  onEventDragStart: (payload: {
+    event: CalendarEventWithDates
+    grabOffsetMinutes: number
+    durationMinutes: number
+    clientX: number
+    clientY: number
+  }) => void
+  draggingEventId: string | null
 }
 
 export default function DayColumn({
@@ -51,9 +49,8 @@ export default function DayColumn({
   onDraftChange,
   onDraftSelect,
   onDraftLayout,
-  onEventTimeChange,
-  previewRange,
-  onPreviewChange,
+  onEventDragStart,
+  draggingEventId,
 }: DayColumnProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const gridRef = useRef<HTMLDivElement | null>(null)
@@ -61,28 +58,11 @@ export default function DayColumn({
   const isToday = isSameDay(date, new Date())
   const [resizeMode, setResizeMode] = useState<'start' | 'end' | null>(null)
   const draftRef = useRef<HTMLDivElement | null>(null)
-  const [isDragging, setIsDragging] = useState(false)
-  const [ghostEvent, setGhostEvent] = useState<{
-    id: string
-    start: Date
-    end: Date
-  } | null>(null)
-  const previewRef = useRef<{ start: Date; end: Date } | null>(null)
-  const rafRef = useRef<number | null>(null)
   const [isDraftDragging, setIsDraftDragging] = useState(false)
   const draftDragRef = useRef<{
     grabOffsetMinutes: number
     durationMinutes: number
   } | null>(null)
-  const dragStateRef = useRef<{
-    id: string
-    start: Date
-    end: Date
-    grabOffsetMinutes: number
-    durationMinutes: number
-  } | null>(null)
-  const latestRangeRef = useRef<{ start: Date; end: Date } | null>(null)
-  const cancelDragRef = useRef(false)
 
   const eventsWithDates = useMemo(() => events, [events])
 
@@ -155,86 +135,6 @@ export default function DayColumn({
   }, [resizeMode, draft, dayStart, onDraftChange])
 
   useEffect(() => {
-    if (!isDragging) {
-      return
-    }
-    const dragState = dragStateRef.current
-    if (!dragState || !gridRef.current) {
-      return
-    }
-
-    const grid = gridRef.current
-    const previousSelect = document.body.style.userSelect
-    document.body.style.userSelect = 'none'
-
-    const onMove = (event: PointerEvent) => {
-      const grids = Array.from(
-        document.querySelectorAll<HTMLElement>('.day-grid'),
-      )
-      const targetGrid =
-        grids.find((item) => {
-          const rect = item.getBoundingClientRect()
-          return event.clientX >= rect.left && event.clientX <= rect.right
-        }) ?? grid
-      const rect = targetGrid.getBoundingClientRect()
-      const offsetY = Math.min(Math.max(0, event.clientY - rect.top), rect.height)
-      const pointerMinutes =
-        Math.round(offsetY / PIXELS_PER_MINUTE / ROUND_STEP) * ROUND_STEP
-      let nextStartMinutes = pointerMinutes - dragState.grabOffsetMinutes
-      nextStartMinutes = Math.max(
-        0,
-        Math.min(24 * 60 - dragState.durationMinutes, nextStartMinutes),
-      )
-      const dateStamp = targetGrid.dataset.dateTs
-      const targetDayStart = dateStamp
-        ? new Date(Number(dateStamp))
-        : dayStart
-      const nextStart = new Date(targetDayStart)
-      nextStart.setMinutes(nextStartMinutes)
-      const nextEnd = addMinutes(nextStart, dragState.durationMinutes)
-      previewRef.current = { start: nextStart, end: nextEnd }
-      if (rafRef.current) return
-      rafRef.current = window.requestAnimationFrame(() => {
-        rafRef.current = null
-        if (!previewRef.current) return
-        onPreviewChange({
-          id: dragState.id,
-          start: previewRef.current.start,
-          end: previewRef.current.end,
-        })
-      })
-    }
-
-    const onUp = () => {
-      document.body.style.userSelect = previousSelect
-      if (!cancelDragRef.current) {
-        const latest = previewRef.current ?? latestRangeRef.current
-        if (latest) {
-          onEventTimeChange(dragState.id, latest.start, latest.end, true)
-        }
-      }
-      cancelDragRef.current = false
-      setIsDragging(false)
-      dragStateRef.current = null
-      latestRangeRef.current = null
-      previewRef.current = null
-      onPreviewChange(null)
-      setGhostEvent(null)
-    }
-
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp, { once: true })
-    return () => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      if (rafRef.current) {
-        window.cancelAnimationFrame(rafRef.current)
-        rafRef.current = null
-      }
-    }
-  }, [dayStart, isDragging, onEventTimeChange])
-
-  useEffect(() => {
     if (!isDraftDragging || !draft) {
       return
     }
@@ -285,27 +185,6 @@ export default function DayColumn({
       window.removeEventListener('pointerup', onUp)
     }
   }, [dayStart, draft, isDraftDragging, onDraftChange])
-
-  useEffect(() => {
-    if (!isDragging) {
-      return
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        const dragState = dragStateRef.current
-        if (!dragState) return
-        cancelDragRef.current = true
-        onPreviewChange(null)
-        previewRef.current = null
-        setIsDragging(false)
-        dragStateRef.current = null
-        latestRangeRef.current = null
-        setGhostEvent(null)
-      }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [isDragging, onEventTimeChange])
 
   const handleGridPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     event.stopPropagation()
@@ -360,12 +239,8 @@ export default function DayColumn({
           )}
           <div className="events-layer">
             {eventsWithDates.map((event) => {
-              const activeRange =
-                previewRange && previewRange.id === event.id
-                  ? previewRange
-                  : event
-              const startMinutes = minutesSinceStart(activeRange.start)
-              const endMinutes = minutesSinceStart(activeRange.end)
+              const startMinutes = minutesSinceStart(event.start)
+              const endMinutes = minutesSinceStart(event.end)
               const top = startMinutes * PIXELS_PER_MINUTE
               const durationMinutes = Math.max(0, endMinutes - startMinutes)
               const height = Math.max(24, durationMinutes * PIXELS_PER_MINUTE)
@@ -384,6 +259,7 @@ export default function DayColumn({
                     'event-wrap',
                     isHighlighted ? 'event-pulse' : '',
                     isExpanded ? 'event-expanded-wrap' : '',
+                    draggingEventId === event.id ? 'event-dragging' : '',
                   ]
                     .filter(Boolean)
                     .join(' ')}
@@ -415,27 +291,16 @@ export default function DayColumn({
                           PIXELS_PER_MINUTE /
                           ROUND_STEP,
                       ) * ROUND_STEP
-                    const startMinutes = minutesSinceStart(event.start)
-                    const endMinutes = minutesSinceStart(event.end)
-                    const durationMinutes = endMinutes - startMinutes
                     const grabOffsetMinutesRaw = pointerMinutes - startMinutes
                     const grabOffsetMinutes =
                       Math.round(grabOffsetMinutesRaw / ROUND_STEP) * ROUND_STEP
-                    dragStateRef.current = {
-                      id: event.id,
-                      start: event.start,
-                      end: event.end,
+                    onEventDragStart({
+                      event,
                       grabOffsetMinutes,
                       durationMinutes,
-                    }
-                    latestRangeRef.current = { start: event.start, end: event.end }
-                    cancelDragRef.current = false
-                    setGhostEvent({
-                      id: event.id,
-                      start: event.start,
-                      end: event.end,
+                      clientX: eventPointer.clientX,
+                      clientY: eventPointer.clientY,
                     })
-                    setIsDragging(true)
                   }}
                 >
                   <EventCard
@@ -450,25 +315,6 @@ export default function DayColumn({
                 </div>
               )
             })}
-            {ghostEvent && (
-              <div
-                className="event-wrap event-ghost"
-                style={
-                  {
-                    top: `${minutesSinceStart(ghostEvent.start) * PIXELS_PER_MINUTE}px`,
-                    ['--event-height' as string]: `${
-                      Math.max(
-                        24,
-                        (minutesSinceStart(ghostEvent.end) -
-                          minutesSinceStart(ghostEvent.start)) * PIXELS_PER_MINUTE,
-                      )
-                    }px`,
-                  } as CSSProperties
-                }
-              >
-                <div className="event-ghost-card" />
-              </div>
-            )}
             {draft && isSameDay(draft.start, date) && (
               <div
                 className="event-wrap draft-event"

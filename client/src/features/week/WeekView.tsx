@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
-import type { CalendarEvent, EventDraft } from '../../models/event'
+import type { CalendarEvent, CalendarEventWithDates, EventDraft } from '../../models/event'
 import { withDates } from '../../models/event'
 import EventCard from '../../components/EventCard'
 import EventPopover from '../../components/EventPopover'
@@ -18,6 +18,8 @@ const PIXELS_PER_MINUTE = 1.1
 const DAY_HEIGHT = 24 * 60 * PIXELS_PER_MINUTE
 const MIN_DURATION_MINUTES = 15
 const ROUND_STEP = 5
+const WEEK_LAYER_LEFT = 8
+const WEEK_LAYER_RIGHT = 6
 
 type WeekViewProps = {
   events: CalendarEvent[]
@@ -61,29 +63,27 @@ export default function WeekView({
     undefined,
   )
   const [panelSide, setPanelSide] = useState<'left' | 'right'>('right')
+  const dragLayerRef = useRef<HTMLDivElement | null>(null)
   const dragStateRef = useRef<{
-    id: string
-    start: Date
-    end: Date
+    event: CalendarEventWithDates
     grabOffsetMinutes: number
     durationMinutes: number
   } | null>(null)
   const latestRangeRef = useRef<{ start: Date; end: Date } | null>(null)
-  const [isDragging, setIsDragging] = useState(false)
-  const [ghostEvent, setGhostEvent] = useState<{
-    id: string
-    start: Date
-    end: Date
-    day: Date
-  } | null>(null)
-  const [previewRange, setPreviewRange] = useState<{
-    id: string
-    start: Date
-    end: Date
-  } | null>(null)
-  const previewRef = useRef<{ start: Date; end: Date } | null>(null)
+  const lastPointerRef = useRef<{ x: number; y: number } | null>(null)
   const rafRef = useRef<number | null>(null)
   const cancelDragRef = useRef(false)
+  const [draggingEvent, setDraggingEvent] = useState<CalendarEventWithDates | null>(
+    null,
+  )
+  const [draggingEventId, setDraggingEventId] = useState<string | null>(null)
+  const dragLabelRef = useRef<HTMLSpanElement | null>(null)
+
+  const formatTime = (date: Date) =>
+    `${date.getHours().toString().padStart(2, '0')}:${date
+      .getMinutes()
+      .toString()
+      .padStart(2, '0')}`
   const [isDraftDragging, setIsDraftDragging] = useState(false)
   const draftDragRef = useRef<{
     grabOffsetMinutes: number
@@ -188,86 +188,6 @@ export default function WeekView({
   }, [resizeMode, draft])
 
   useEffect(() => {
-    if (!isDragging) {
-      return
-    }
-    const dragState = dragStateRef.current
-    if (!dragState) {
-      return
-    }
-
-    const previousSelect = document.body.style.userSelect
-    document.body.style.userSelect = 'none'
-
-    const onMove = (event: PointerEvent) => {
-      const grids = Array.from(
-        document.querySelectorAll<HTMLElement>('.week-day-grid'),
-      )
-      const grid =
-        grids.find((item) => {
-          const rect = item.getBoundingClientRect()
-          return event.clientX >= rect.left && event.clientX <= rect.right
-        }) ?? grids[0]
-      if (!grid) return
-      const rect = grid.getBoundingClientRect()
-      const offsetY = Math.min(Math.max(0, event.clientY - rect.top), rect.height)
-      const pointerMinutes =
-        Math.round(offsetY / PIXELS_PER_MINUTE / ROUND_STEP) * ROUND_STEP
-      let nextStartMinutes = pointerMinutes - dragState.grabOffsetMinutes
-      nextStartMinutes = Math.max(
-        0,
-        Math.min(24 * 60 - dragState.durationMinutes, nextStartMinutes),
-      )
-      const dateStamp = grid.dataset.dateTs
-      const targetDayStart = dateStamp
-        ? new Date(Number(dateStamp))
-        : startOfDay(referenceDate)
-      const nextStart = new Date(targetDayStart)
-      nextStart.setMinutes(nextStartMinutes)
-      const nextEnd = addMinutes(nextStart, dragState.durationMinutes)
-      previewRef.current = { start: nextStart, end: nextEnd }
-      if (rafRef.current) return
-      rafRef.current = window.requestAnimationFrame(() => {
-        rafRef.current = null
-        if (!previewRef.current) return
-        setPreviewRange({
-          id: dragState.id,
-          start: previewRef.current.start,
-          end: previewRef.current.end,
-        })
-      })
-    }
-
-    const onUp = () => {
-      document.body.style.userSelect = previousSelect
-      if (!cancelDragRef.current) {
-        const latest = previewRef.current ?? latestRangeRef.current
-        if (latest) {
-          onUpdateEventTime(dragState.id, latest.start, latest.end, true)
-        }
-      }
-      cancelDragRef.current = false
-      setIsDragging(false)
-      dragStateRef.current = null
-      latestRangeRef.current = null
-      previewRef.current = null
-      setPreviewRange(null)
-      setGhostEvent(null)
-    }
-
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp, { once: true })
-    return () => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      if (rafRef.current) {
-        window.cancelAnimationFrame(rafRef.current)
-        rafRef.current = null
-      }
-    }
-  }, [isDragging, onUpdateEventTime])
-
-  useEffect(() => {
     if (!isDraftDragging || !draft) {
       return
     }
@@ -320,27 +240,6 @@ export default function WeekView({
   }, [draft, isDraftDragging, referenceDate])
 
   useEffect(() => {
-    if (!isDragging) {
-      return
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        const dragState = dragStateRef.current
-        if (!dragState) return
-        cancelDragRef.current = true
-        setPreviewRange(null)
-        previewRef.current = null
-        setIsDragging(false)
-        dragStateRef.current = null
-        latestRangeRef.current = null
-        setGhostEvent(null)
-      }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [isDragging, onUpdateEventTime])
-
-  useEffect(() => {
     if (!draft) {
       return
     }
@@ -372,6 +271,149 @@ export default function WeekView({
       document.removeEventListener('pointerdown', onPointerDown)
     }
   }, [draft])
+
+  const applyDragPosition = () => {
+    if (!containerRef.current || !dragLayerRef.current || !dragStateRef.current) {
+      return
+    }
+    if (!lastPointerRef.current) {
+      return
+    }
+    const { x, y } = lastPointerRef.current
+    const grids = Array.from(
+      containerRef.current.querySelectorAll<HTMLElement>('.week-day-grid'),
+    )
+    const targetGrid =
+      grids.find((item) => {
+        const rect = item.getBoundingClientRect()
+        return x >= rect.left && x <= rect.right
+      }) ?? grids[0]
+    if (!targetGrid) {
+      return
+    }
+    const rect = targetGrid.getBoundingClientRect()
+    const containerRect = containerRef.current.getBoundingClientRect()
+    const offsetY = Math.min(Math.max(0, y - rect.top), rect.height)
+    const pointerMinutes =
+      Math.round(offsetY / PIXELS_PER_MINUTE / ROUND_STEP) * ROUND_STEP
+    const dragState = dragStateRef.current
+    let nextStartMinutes = pointerMinutes - dragState.grabOffsetMinutes
+    nextStartMinutes = Math.max(
+      0,
+      Math.min(24 * 60 - dragState.durationMinutes, nextStartMinutes),
+    )
+    const dateStamp = targetGrid.dataset.dateTs
+    const targetDayStart = dateStamp
+      ? new Date(Number(dateStamp))
+      : startOfDay(referenceDate)
+    const nextStart = new Date(targetDayStart)
+    nextStart.setMinutes(nextStartMinutes)
+    const nextEnd = addMinutes(nextStart, dragState.durationMinutes)
+    latestRangeRef.current = { start: nextStart, end: nextEnd }
+
+    const left = rect.left - containerRect.left + WEEK_LAYER_LEFT
+    const width = Math.max(
+      120,
+      rect.width - WEEK_LAYER_LEFT - WEEK_LAYER_RIGHT,
+    )
+    const top =
+      rect.top - containerRect.top + nextStartMinutes * PIXELS_PER_MINUTE
+    const height = Math.max(24, dragState.durationMinutes * PIXELS_PER_MINUTE)
+
+    const layer = dragLayerRef.current
+    layer.style.display = 'block'
+    layer.style.transform = `translate(${left}px, ${top}px)`
+    layer.style.width = `${width}px`
+    layer.style.height = `${height}px`
+    if (dragLabelRef.current) {
+      dragLabelRef.current.textContent = `${formatTime(nextStart)} - ${formatTime(
+        nextEnd,
+      )}`
+    }
+  }
+
+  const scheduleDragUpdate = () => {
+    if (rafRef.current) {
+      return
+    }
+    rafRef.current = window.requestAnimationFrame(() => {
+      rafRef.current = null
+      applyDragPosition()
+    })
+  }
+
+  const handleEventDragStart = (payload: {
+    event: CalendarEventWithDates
+    grabOffsetMinutes: number
+    durationMinutes: number
+    clientX: number
+    clientY: number
+  }) => {
+    dragStateRef.current = {
+      event: payload.event,
+      grabOffsetMinutes: payload.grabOffsetMinutes,
+      durationMinutes: payload.durationMinutes,
+    }
+    cancelDragRef.current = false
+    lastPointerRef.current = { x: payload.clientX, y: payload.clientY }
+    setDraggingEvent(payload.event)
+    setDraggingEventId(payload.event.id)
+    scheduleDragUpdate()
+  }
+
+  useEffect(() => {
+    if (!draggingEventId) {
+      return
+    }
+
+    const onMove = (event: PointerEvent) => {
+      lastPointerRef.current = { x: event.clientX, y: event.clientY }
+      scheduleDragUpdate()
+    }
+
+    const onUp = () => {
+      if (!cancelDragRef.current) {
+        const latest = latestRangeRef.current
+        if (latest && dragStateRef.current) {
+          onUpdateEventTime(
+            dragStateRef.current.event.id,
+            latest.start,
+            latest.end,
+            true,
+          )
+        }
+      }
+      cancelDragRef.current = false
+      dragStateRef.current = null
+      latestRangeRef.current = null
+      lastPointerRef.current = null
+      setDraggingEvent(null)
+      setDraggingEventId(null)
+      if (dragLayerRef.current) {
+        dragLayerRef.current.style.display = 'none'
+      }
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        cancelDragRef.current = true
+        onUp()
+      }
+    }
+
+    document.addEventListener('pointermove', onMove)
+    document.addEventListener('pointerup', onUp, { once: true })
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerup', onUp)
+      document.removeEventListener('keydown', onKeyDown)
+      if (rafRef.current) {
+        window.cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
+    }
+  }, [draggingEventId, onUpdateEventTime, referenceDate])
 
   useEffect(() => {
     if (!draftRef.current || !draft || !containerRef.current) {
@@ -441,12 +483,7 @@ export default function WeekView({
           <div className="week-days">
             {days.map((day, dayIndex) => {
               const dayEvents = eventDates.filter((event) =>
-                isSameDay(
-                  (previewRange && previewRange.id === event.id
-                    ? previewRange.start
-                    : event.start),
-                  day,
-                ),
+                isSameDay(event.start, day),
               )
               const align = dayIndex > 3 ? 'left' : 'right'
               const dayKey = day.toDateString()
@@ -472,12 +509,8 @@ export default function WeekView({
                   >
                     <div className="events-layer">
                       {dayEvents.map((event) => {
-                        const activeRange =
-                          previewRange && previewRange.id === event.id
-                            ? previewRange
-                            : event
-                        const startMinutes = minutesSinceStart(activeRange.start)
-                        const endMinutes = minutesSinceStart(activeRange.end)
+                        const startMinutes = minutesSinceStart(event.start)
+                        const endMinutes = minutesSinceStart(event.end)
                         const top = startMinutes * PIXELS_PER_MINUTE
                         const durationMinutes = Math.max(0, endMinutes - startMinutes)
                         const height = Math.max(24, durationMinutes * PIXELS_PER_MINUTE)
@@ -490,7 +523,12 @@ export default function WeekView({
                         return (
                           <div
                             key={event.id}
-                            className="event-wrap"
+                            className={[
+                              'event-wrap',
+                              draggingEventId === event.id ? 'event-dragging' : '',
+                            ]
+                              .filter(Boolean)
+                              .join(' ')}
                             data-event-id={event.id}
                             style={
                               {
@@ -526,25 +564,13 @@ export default function WeekView({
                               const grabOffsetMinutes =
                                 Math.round(grabOffsetMinutesRaw / ROUND_STEP) *
                                 ROUND_STEP
-                              dragStateRef.current = {
-                                id: event.id,
-                                start: event.start,
-                                end: event.end,
+                              handleEventDragStart({
+                                event,
                                 grabOffsetMinutes,
                                 durationMinutes,
-                              }
-                              latestRangeRef.current = {
-                                start: event.start,
-                                end: event.end,
-                              }
-                              cancelDragRef.current = false
-                              setGhostEvent({
-                                id: event.id,
-                                start: event.start,
-                                end: event.end,
-                                day,
+                                clientX: eventPointer.clientX,
+                                clientY: eventPointer.clientY,
                               })
-                              setIsDragging(true)
                             }}
                           >
                             <EventCard
@@ -575,28 +601,6 @@ export default function WeekView({
                           </div>
                         )
                       })}
-                      {ghostEvent && isSameDay(ghostEvent.day, day) && (
-                        <div
-                          className="event-wrap event-ghost"
-                          style={
-                            {
-                              top: `${
-                                minutesSinceStart(ghostEvent.start) * PIXELS_PER_MINUTE
-                              }px`,
-                              ['--event-height' as string]: `${
-                                Math.max(
-                                  24,
-                                  (minutesSinceStart(ghostEvent.end) -
-                                    minutesSinceStart(ghostEvent.start)) *
-                                    PIXELS_PER_MINUTE,
-                                )
-                              }px`,
-                            } as CSSProperties
-                          }
-                        >
-                          <div className="event-ghost-card" />
-                        </div>
-                      )}
                       {draft && isSameDay(draft.start, day) && (
                         <div
                           className="event-wrap draft-event"
@@ -697,6 +701,16 @@ export default function WeekView({
           </div>
         </div>
       </div>
+      {draggingEvent && (
+        <div ref={dragLayerRef} className="drag-layer">
+          <div className="drag-layer-card">
+            <span className="drag-layer-title">
+              {draggingEvent.title || 'Novo evento'}
+            </span>
+            <span ref={dragLabelRef} className="drag-layer-time" />
+          </div>
+        </div>
+      )}
       {draft && (
         <EventFormPanel
           draft={draft}
