@@ -77,6 +77,11 @@ export default function WeekView({
     day: Date
   } | null>(null)
   const cancelDragRef = useRef(false)
+  const [isDraftDragging, setIsDraftDragging] = useState(false)
+  const draftDragRef = useRef<{
+    grabOffsetMinutes: number
+    durationMinutes: number
+  } | null>(null)
 
   const requestClose = () => {
     if (!selectedId) {
@@ -239,6 +244,58 @@ export default function WeekView({
       window.removeEventListener('pointerup', onUp)
     }
   }, [isDragging, onUpdateEventTime])
+
+  useEffect(() => {
+    if (!isDraftDragging || !draft) {
+      return
+    }
+
+    const previousSelect = document.body.style.userSelect
+    document.body.style.userSelect = 'none'
+
+    const onMove = (event: PointerEvent) => {
+      const grids = Array.from(
+        document.querySelectorAll<HTMLElement>('.week-day-grid'),
+      )
+      const grid =
+        grids.find((item) => {
+          const rect = item.getBoundingClientRect()
+          return event.clientX >= rect.left && event.clientX <= rect.right
+        }) ?? grids[0]
+      if (!grid || !draftDragRef.current) return
+      const rect = grid.getBoundingClientRect()
+      const offsetY = Math.min(Math.max(0, event.clientY - rect.top), rect.height)
+      const pointerMinutes =
+        Math.round(offsetY / PIXELS_PER_MINUTE / ROUND_STEP) * ROUND_STEP
+      let nextStartMinutes =
+        pointerMinutes - draftDragRef.current.grabOffsetMinutes
+      nextStartMinutes = Math.max(
+        0,
+        Math.min(24 * 60 - draftDragRef.current.durationMinutes, nextStartMinutes),
+      )
+      const dateStamp = grid.dataset.dateTs
+      const targetDayStart = dateStamp
+        ? new Date(Number(dateStamp))
+        : startOfDay(referenceDate)
+      const nextStart = new Date(targetDayStart)
+      nextStart.setMinutes(nextStartMinutes)
+      const nextEnd = addMinutes(nextStart, draftDragRef.current.durationMinutes)
+      setDraft({ ...draft, start: nextStart, end: nextEnd })
+    }
+
+    const onUp = () => {
+      document.body.style.userSelect = previousSelect
+      setIsDraftDragging(false)
+      draftDragRef.current = null
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp, { once: true })
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+  }, [draft, isDraftDragging, referenceDate])
 
   useEffect(() => {
     if (!isDragging) {
@@ -531,7 +588,41 @@ export default function WeekView({
                             setSelectedId(null)
                           }}
                         >
-                          <div className="draft-card">
+                          <div
+                            className={
+                              isDraftDragging ? 'draft-card draft-dragging' : 'draft-card'
+                            }
+                            onPointerDown={(eventPointer) => {
+                              const target = eventPointer.target as HTMLElement | null
+                              if (target?.closest('.draft-handle')) {
+                                return
+                              }
+                              eventPointer.stopPropagation()
+                              eventPointer.preventDefault()
+                              const grid = gridRefs.current.get(dayKey)
+                              if (!grid) return
+                              const gridRect = grid.getBoundingClientRect()
+                              const pointerMinutes =
+                                Math.round(
+                                  (eventPointer.clientY - gridRect.top) /
+                                    PIXELS_PER_MINUTE /
+                                    ROUND_STEP,
+                                ) * ROUND_STEP
+                              const startMinutes = minutesSinceStart(draft.start)
+                              const endMinutes = minutesSinceStart(draft.end)
+                              const durationMinutes = endMinutes - startMinutes
+                              const grabOffsetMinutesRaw =
+                                pointerMinutes - startMinutes
+                              const grabOffsetMinutes =
+                                Math.round(grabOffsetMinutesRaw / ROUND_STEP) *
+                                ROUND_STEP
+                              draftDragRef.current = {
+                                grabOffsetMinutes,
+                                durationMinutes,
+                              }
+                              setIsDraftDragging(true)
+                            }}
+                          >
                             <span>{draft.title || 'Novo evento'}</span>
                             <div
                               className="draft-handle draft-handle-top"
