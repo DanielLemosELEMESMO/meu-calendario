@@ -286,9 +286,9 @@
   position: absolute;
   left: 18%;
   right: 18%;
-  height: 8px;
+  height: 3px;
   border-radius: 999px;
-  background: rgba(31, 41, 51, 0.4);
+  background: rgba(31, 41, 51, 0.137);
   opacity: 0;
   pointer-events: auto;
   cursor: ns-resize;
@@ -300,7 +300,7 @@
 }
 
 .event-resize-handle-bottom {
-  bottom: -4px;
+  bottom: -1px;
 }
 
 .event-wrap:hover .event-resize-handle {
@@ -455,7 +455,7 @@
 }
 
 .event-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .event-header {
