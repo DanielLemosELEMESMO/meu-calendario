@@ -26,6 +26,39 @@ export default function FocusView({
   )
   const [panelSide, setPanelSide] = useState<'left' | 'right'>('right')
 
+  useEffect(() => {
+    if (!draft) {
+      return
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setDraft(null)
+      }
+    }
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.defaultPrevented) {
+        return
+      }
+      const target = event.target as HTMLElement | null
+      if (!target) {
+        return
+      }
+      if (target.closest('.draft-event') || target.closest('.event-form-panel')) {
+        return
+      }
+      setDraft(null)
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('pointerdown', onPointerDown)
+    }
+  }, [draft])
+
   const days = useMemo(() => {
     const today = startOfDay(referenceDate)
     return [

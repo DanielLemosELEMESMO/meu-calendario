@@ -321,7 +321,7 @@
   border: 1px solid var(--stroke);
   border-left: 5px solid var(--accent-2);
   border-radius: 18px;
-  padding: 12px 14px;
+  padding: 4px 14px 0 14px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -339,7 +339,6 @@
 
 .event-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 30px rgba(31, 41, 51, 0.15);
 }
 
 .event-header {

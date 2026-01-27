@@ -123,6 +123,7 @@ export default function DayColumn({
   }, [resizeMode, draft, dayStart, onDraftChange])
 
   const handleGridPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.stopPropagation()
     if (event.target instanceof HTMLElement) {
       if (event.target.closest('.event-wrap') || event.target.closest('.draft-event')) {
         return

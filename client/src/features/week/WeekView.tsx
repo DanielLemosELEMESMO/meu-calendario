@@ -152,6 +152,39 @@ export default function WeekView({
   }, [resizeMode, draft])
 
   useEffect(() => {
+    if (!draft) {
+      return
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setDraft(null)
+      }
+    }
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.defaultPrevented) {
+        return
+      }
+      const target = event.target as HTMLElement | null
+      if (!target) {
+        return
+      }
+      if (target.closest('.draft-event') || target.closest('.event-form-panel')) {
+        return
+      }
+      setDraft(null)
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('pointerdown', onPointerDown)
+    }
+  }, [draft])
+
+  useEffect(() => {
     if (!draftRef.current || !draft || !containerRef.current) {
       setPanelStyle(undefined)
       return
@@ -176,6 +209,7 @@ export default function WeekView({
     grid: HTMLDivElement | null,
     event: ReactPointerEvent<HTMLDivElement>,
   ) => {
+    event.stopPropagation()
     if (!grid) return
     if (event.target instanceof HTMLElement) {
       if (event.target.closest('.event-wrap') || event.target.closest('.draft-event')) {
