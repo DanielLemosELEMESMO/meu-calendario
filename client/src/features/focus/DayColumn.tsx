@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import EventCard from '../../components/EventCard'
-import type { CalendarEvent, EventDraft } from '../../models/event'
-import { withDates } from '../../models/event'
+import type { CalendarEventWithDates, EventDraft } from '../../models/event'
 import {
   formatDayLabel,
   isSameDay,
@@ -19,7 +18,7 @@ const ROUND_STEP = 5
 type DayColumnProps = {
   label: string
   date: Date
-  events: CalendarEvent[]
+  events: CalendarEventWithDates[]
   highlightId: string | null
   selectedId: string | null
   onSelectEvent: (eventId: string | null) => void
@@ -33,6 +32,10 @@ type DayColumnProps = {
     start: Date,
     end: Date,
     commit: boolean,
+  ) => void
+  previewRange: { id: string; start: Date; end: Date } | null
+  onPreviewChange: (
+    range: { id: string; start: Date; end: Date } | null,
   ) => void
 }
 
@@ -49,6 +52,8 @@ export default function DayColumn({
   onDraftSelect,
   onDraftLayout,
   onEventTimeChange,
+  previewRange,
+  onPreviewChange,
 }: DayColumnProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const gridRef = useRef<HTMLDivElement | null>(null)
@@ -62,6 +67,8 @@ export default function DayColumn({
     start: Date
     end: Date
   } | null>(null)
+  const previewRef = useRef<{ start: Date; end: Date } | null>(null)
+  const rafRef = useRef<number | null>(null)
   const [isDraftDragging, setIsDraftDragging] = useState(false)
   const draftDragRef = useRef<{
     grabOffsetMinutes: number
@@ -77,10 +84,7 @@ export default function DayColumn({
   const latestRangeRef = useRef<{ start: Date; end: Date } | null>(null)
   const cancelDragRef = useRef(false)
 
-  const eventsWithDates = useMemo(
-    () => events.map(withDates),
-    [events],
-  )
+  const eventsWithDates = useMemo(() => events, [events])
 
   useEffect(() => {
     if (!isToday || !scrollRef.current) {
@@ -188,14 +192,23 @@ export default function DayColumn({
       const nextStart = new Date(targetDayStart)
       nextStart.setMinutes(nextStartMinutes)
       const nextEnd = addMinutes(nextStart, dragState.durationMinutes)
-      latestRangeRef.current = { start: nextStart, end: nextEnd }
-      onEventTimeChange(dragState.id, nextStart, nextEnd, false)
+      previewRef.current = { start: nextStart, end: nextEnd }
+      if (rafRef.current) return
+      rafRef.current = window.requestAnimationFrame(() => {
+        rafRef.current = null
+        if (!previewRef.current) return
+        onPreviewChange({
+          id: dragState.id,
+          start: previewRef.current.start,
+          end: previewRef.current.end,
+        })
+      })
     }
 
     const onUp = () => {
       document.body.style.userSelect = previousSelect
       if (!cancelDragRef.current) {
-        const latest = latestRangeRef.current
+        const latest = previewRef.current ?? latestRangeRef.current
         if (latest) {
           onEventTimeChange(dragState.id, latest.start, latest.end, true)
         }
@@ -204,6 +217,8 @@ export default function DayColumn({
       setIsDragging(false)
       dragStateRef.current = null
       latestRangeRef.current = null
+      previewRef.current = null
+      onPreviewChange(null)
       setGhostEvent(null)
     }
 
@@ -212,6 +227,10 @@ export default function DayColumn({
     return () => {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
+      if (rafRef.current) {
+        window.cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
     }
   }, [dayStart, isDragging, onEventTimeChange])
 
@@ -276,7 +295,8 @@ export default function DayColumn({
         const dragState = dragStateRef.current
         if (!dragState) return
         cancelDragRef.current = true
-        onEventTimeChange(dragState.id, dragState.start, dragState.end, false)
+        onPreviewChange(null)
+        previewRef.current = null
         setIsDragging(false)
         dragStateRef.current = null
         latestRangeRef.current = null
@@ -340,8 +360,12 @@ export default function DayColumn({
           )}
           <div className="events-layer">
             {eventsWithDates.map((event) => {
-              const startMinutes = minutesSinceStart(event.start)
-              const endMinutes = minutesSinceStart(event.end)
+              const activeRange =
+                previewRange && previewRange.id === event.id
+                  ? previewRange
+                  : event
+              const startMinutes = minutesSinceStart(activeRange.start)
+              const endMinutes = minutesSinceStart(activeRange.end)
               const top = startMinutes * PIXELS_PER_MINUTE
               const durationMinutes = Math.max(0, endMinutes - startMinutes)
               const height = Math.max(24, durationMinutes * PIXELS_PER_MINUTE)

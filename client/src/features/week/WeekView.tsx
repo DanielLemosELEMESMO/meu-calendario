@@ -76,6 +76,13 @@ export default function WeekView({
     end: Date
     day: Date
   } | null>(null)
+  const [previewRange, setPreviewRange] = useState<{
+    id: string
+    start: Date
+    end: Date
+  } | null>(null)
+  const previewRef = useRef<{ start: Date; end: Date } | null>(null)
+  const rafRef = useRef<number | null>(null)
   const cancelDragRef = useRef(false)
   const [isDraftDragging, setIsDraftDragging] = useState(false)
   const draftDragRef = useRef<{
@@ -218,14 +225,23 @@ export default function WeekView({
       const nextStart = new Date(targetDayStart)
       nextStart.setMinutes(nextStartMinutes)
       const nextEnd = addMinutes(nextStart, dragState.durationMinutes)
-      latestRangeRef.current = { start: nextStart, end: nextEnd }
-      onUpdateEventTime(dragState.id, nextStart, nextEnd, false)
+      previewRef.current = { start: nextStart, end: nextEnd }
+      if (rafRef.current) return
+      rafRef.current = window.requestAnimationFrame(() => {
+        rafRef.current = null
+        if (!previewRef.current) return
+        setPreviewRange({
+          id: dragState.id,
+          start: previewRef.current.start,
+          end: previewRef.current.end,
+        })
+      })
     }
 
     const onUp = () => {
       document.body.style.userSelect = previousSelect
       if (!cancelDragRef.current) {
-        const latest = latestRangeRef.current
+        const latest = previewRef.current ?? latestRangeRef.current
         if (latest) {
           onUpdateEventTime(dragState.id, latest.start, latest.end, true)
         }
@@ -234,6 +250,8 @@ export default function WeekView({
       setIsDragging(false)
       dragStateRef.current = null
       latestRangeRef.current = null
+      previewRef.current = null
+      setPreviewRange(null)
       setGhostEvent(null)
     }
 
@@ -242,6 +260,10 @@ export default function WeekView({
     return () => {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
+      if (rafRef.current) {
+        window.cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
     }
   }, [isDragging, onUpdateEventTime])
 
@@ -306,7 +328,8 @@ export default function WeekView({
         const dragState = dragStateRef.current
         if (!dragState) return
         cancelDragRef.current = true
-        onUpdateEventTime(dragState.id, dragState.start, dragState.end, false)
+        setPreviewRange(null)
+        previewRef.current = null
         setIsDragging(false)
         dragStateRef.current = null
         latestRangeRef.current = null
@@ -418,7 +441,12 @@ export default function WeekView({
           <div className="week-days">
             {days.map((day, dayIndex) => {
               const dayEvents = eventDates.filter((event) =>
-                isSameDay(event.start, day),
+                isSameDay(
+                  (previewRange && previewRange.id === event.id
+                    ? previewRange.start
+                    : event.start),
+                  day,
+                ),
               )
               const align = dayIndex > 3 ? 'left' : 'right'
               const dayKey = day.toDateString()
@@ -444,8 +472,12 @@ export default function WeekView({
                   >
                     <div className="events-layer">
                       {dayEvents.map((event) => {
-                        const startMinutes = minutesSinceStart(event.start)
-                        const endMinutes = minutesSinceStart(event.end)
+                        const activeRange =
+                          previewRange && previewRange.id === event.id
+                            ? previewRange
+                            : event
+                        const startMinutes = minutesSinceStart(activeRange.start)
+                        const endMinutes = minutesSinceStart(activeRange.end)
                         const top = startMinutes * PIXELS_PER_MINUTE
                         const durationMinutes = Math.max(0, endMinutes - startMinutes)
                         const height = Math.max(24, durationMinutes * PIXELS_PER_MINUTE)

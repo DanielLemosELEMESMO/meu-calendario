@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import DayColumn from './DayColumn'
-import type { CalendarEvent, EventDraft } from '../../models/event'
+import type { CalendarEvent, CalendarEventWithDates, EventDraft } from '../../models/event'
+import { withDates } from '../../models/event'
 import { addDays, isSameDay, startOfDay } from '../../utils/dates'
 import EventFormPanel from '../../components/EventFormPanel'
 
@@ -27,6 +28,11 @@ export default function FocusView({
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [draft, setDraft] = useState<EventDraft | null>(null)
+  const [previewRange, setPreviewRange] = useState<{
+    id: string
+    start: Date
+    end: Date
+  } | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [panelStyle, setPanelStyle] = useState<React.CSSProperties | undefined>(
     undefined,
@@ -75,12 +81,24 @@ export default function FocusView({
     ]
   }, [referenceDate])
 
+  const adjustedEvents: CalendarEventWithDates[] = useMemo(() => {
+    const base = events.map(withDates)
+    if (!previewRange) {
+      return base
+    }
+    return base.map((event) =>
+      event.id === previewRange.id
+        ? { ...event, start: previewRange.start, end: previewRange.end }
+        : event,
+    )
+  }, [events, previewRange])
+
   const eventsByDay = useMemo(
     () =>
       days.map(({ date }) =>
-        events.filter((event) => isSameDay(new Date(event.start), date)),
+        adjustedEvents.filter((event) => isSameDay(event.start, date)),
       ),
-    [days, events],
+    [days, adjustedEvents],
   )
 
   useEffect(() => {
@@ -156,6 +174,8 @@ export default function FocusView({
               setPanelStyle({ left, top, width })
             }}
             onEventTimeChange={onUpdateEventTime}
+            previewRange={previewRange}
+            onPreviewChange={setPreviewRange}
           />
         ))}
       </div>
