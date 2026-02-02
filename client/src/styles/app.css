@@ -46,6 +46,7 @@
   align-items: center;
   justify-items: center;
   padding: 2px 0;
+  z-index: 1;
   transition: background 0.2s ease;
 }
 
@@ -56,6 +57,7 @@
   background: var(--ink-1);
   transition: transform 0.2s ease, background 0.2s ease;
   transform: translateY(-10px);
+  z-index: 1;
 }
 
 .theme-toggle.theme-dark .theme-toggle-thumb {
@@ -67,6 +69,8 @@
   height: 14px;
   color: var(--ink-2);
   opacity: 0.7;
+  position: relative;
+  z-index: 2;
   transition: opacity 0.2s ease, color 0.2s ease;
 }
 
