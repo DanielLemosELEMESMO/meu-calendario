@@ -290,7 +290,7 @@
   position: absolute;
   left: 18%;
   right: 18%;
-  height: 3px;
+  height: 2px;
   border-radius: 999px;
   background: rgba(31, 41, 51, 0.137);
   opacity: 0;
@@ -300,7 +300,7 @@
 }
 
 .event-resize-handle-top {
-  top: -4px;
+  top: -1px;
 }
 
 .event-resize-handle-bottom {
@@ -418,7 +418,7 @@
   border: 1px solid var(--stroke);
   border-left: 5px solid var(--accent-2);
   border-radius: 18px;
-  padding: 4px 14px 0 14px;
+  padding: 0 14px 0 14px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -454,10 +454,6 @@
   height: var(--event-height);
   left: 18px;
   right: 10px;
-}
-
-.event-card:hover {
-  transform: translateY(-1px);
 }
 
 .event-header {
