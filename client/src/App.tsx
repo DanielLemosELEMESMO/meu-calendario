@@ -183,14 +183,16 @@ export default function App() {
           <span className="brand-name">MeuCalendario</span>
           <span className="brand-tagline">Organize o agora, simplifique o resto.</span>
         </div>
-        <button className="logout-button" type="button" onClick={handleLogout}>
-          Sair
-        </button>
-        <ViewTabs
-          options={views}
-          value={activeView}
-          onChange={setActiveView}
-        />
+        <div className="app-header-actions">
+          <ViewTabs
+            options={views}
+            value={activeView}
+            onChange={setActiveView}
+          />
+          <button className="logout-button" type="button" onClick={handleLogout}>
+            Sair
+          </button>
+        </div>
       </header>
       <main className="app-main">
         {error && <div className="app-error">{error}</div>}
