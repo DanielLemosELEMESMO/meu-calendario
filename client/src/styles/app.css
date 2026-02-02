@@ -511,6 +511,14 @@
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.1s ease;
+  color: var(--event-text-strong);
+}
+
+.event-card.event-past {
+  background:
+    linear-gradient(var(--event-past-overlay), var(--event-past-overlay)),
+    var(--event-bg, var(--event-bg-default));
+  color: #ffffff;
 }
 
 .event-compact {
@@ -519,18 +527,18 @@
   gap: 8px;
   align-items: center;
   font-size: 13px;
-  color: var(--ink-2);
+  color: var(--event-text-muted);
 }
 
 .event-compact-time {
   font-weight: 600;
-  color: var(--ink-2);
+  color: var(--event-text-muted);
   white-space: nowrap;
 }
 
 .event-compact-title {
   font-weight: 600;
-  color: var(--ink-1);
+  color: var(--event-text-strong);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -548,7 +556,7 @@
   justify-content: space-between;
   align-items: center;
   font-size: 12px;
-  color: var(--ink-2);
+  color: var(--event-text-muted);
   transition: opacity 0.1s ease;
 }
 
@@ -577,6 +585,7 @@
   margin: 0;
   font-size: 15px;
   font-weight: 600;
+  color: var(--event-text-strong);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -596,7 +605,7 @@
 .event-description {
   margin: 0;
   font-size: 13px;
-  color: var(--ink-2);
+  color: var(--event-text-muted);
   opacity: 0;
   max-height: 0;
   transition: opacity 0.1s ease, max-height 0.1s ease;
@@ -610,6 +619,18 @@
 .event-card.event-active .event-description {
   opacity: 1;
   max-height: 200px;
+}
+
+.event-card.event-past .event-compact,
+.event-card.event-past .event-compact-time,
+.event-card.event-past .event-header,
+.event-card.event-past .event-description {
+  color: var(--event-text-past);
+}
+
+.event-card.event-past .event-compact-title,
+.event-card.event-past .event-title {
+  color: var(--event-text-past);
 }
 
 .event-short .event-header,
@@ -823,6 +844,25 @@
   border-radius: 10px;
   text-align: left;
   transition: transform 0.1s ease;
+  color: var(--event-text-strong);
+}
+
+.month-event-past {
+  background:
+    linear-gradient(var(--event-past-overlay), var(--event-past-overlay)),
+    var(--event-bg, var(--event-bg-default));
+}
+
+.month-event-text {
+  color: var(--event-text-strong);
+}
+
+.month-event-text-past {
+  color: var(--event-text-past);
+}
+
+.month-event.month-event-selected {
+  outline: 2px solid var(--event-outline-active);
 }
 
 .month-event-selected {

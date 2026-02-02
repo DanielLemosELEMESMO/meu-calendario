@@ -116,9 +116,13 @@ export default function MonthView({
                     <button
                       type="button"
                       className={
-                        selectedId === event.id
-                          ? 'month-event month-event-selected'
-                          : 'month-event'
+                        [
+                          'month-event',
+                          selectedId === event.id ? 'month-event-selected' : '',
+                          event.end.getTime() < Date.now() ? 'month-event-past' : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')
                       }
                       style={
                         event.color
@@ -136,7 +140,15 @@ export default function MonthView({
                         )
                       }}
                     >
-                      {event.title}
+                      <span
+                        className={
+                          event.end.getTime() < Date.now()
+                            ? 'month-event-text month-event-text-past'
+                            : 'month-event-text'
+                        }
+                      >
+                        {event.title}
+                      </span>
                     </button>
                     {selectedId === event.id && (
                       <EventPopover

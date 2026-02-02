@@ -19,11 +19,13 @@ export default function EventCard({
   onToggleComplete,
 }: EventCardProps) {
   const isActive = isNowWithin(event.start, event.end)
+  const isPast = event.end.getTime() < Date.now()
   const timeLabel = formatTimeRange(event.start, event.end)
   return (
     <article
       className={[
         'event-card',
+        isPast ? 'event-past' : '',
         event.completed ? 'event-completed' : '',
         isActive ? 'event-active' : '',
         density === 'short' ? 'event-short' : '',
