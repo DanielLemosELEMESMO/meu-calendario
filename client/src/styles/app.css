@@ -551,7 +551,8 @@
 
 .event-expanded {
   transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+  outline: 3px solid #7fd3da;
+  outline-offset: 0;
 }
 
 .event-expanded:hover {

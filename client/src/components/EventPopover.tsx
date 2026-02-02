@@ -40,7 +40,7 @@ export default function EventPopover({
           <div className="popover-time">{formatTimeRange(event.start, event.end)}</div>
         </div>
         <button className="popover-close" type="button" onClick={onClose}>
-          ( x )
+          X
         </button>
       </header>
       {event.description && (
