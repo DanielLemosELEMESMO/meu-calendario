@@ -41,6 +41,9 @@
   --event-text-muted: rgba(11, 18, 32, 0.7);
   --event-past-overlay: rgba(255, 255, 255, 0.35);
   --event-text-past: rgba(255, 255, 255, 0.72);
+  --ink-45: rgba(31, 41, 51, 0.45);
+  --ink-50: rgba(31, 41, 51, 0.5);
+  --line-subtle: rgba(31, 41, 51, 0.08);
   font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
 }
 
@@ -79,6 +82,9 @@
   --event-text-muted: rgba(11, 18, 32, 0.75);
   --event-past-overlay: rgba(0, 0, 0, 0.28);
   --event-text-past: rgba(226, 232, 240, 0.72);
+  --ink-45: rgb(131 165 198 / 45%);
+  --ink-50: rgb(131 165 198 / 50%);
+  --line-subtle: rgb(131 165 198 / 12%);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -117,6 +123,9 @@
     --event-text-muted: rgba(11, 18, 32, 0.75);
     --event-past-overlay: rgba(0, 0, 0, 0.28);
     --event-text-past: rgba(226, 232, 240, 0.72);
+    --ink-45: rgb(131 165 198 / 45%);
+    --ink-50: rgb(131 165 198 / 50%);
+    --line-subtle: rgb(131 165 198 / 12%);
   }
 }
 

@@ -326,7 +326,7 @@
 
 .hour-row {
   height: calc(60px * 1.1);
-  border-top: 1px dashed rgba(31, 41, 51, 0.08);
+  border-top: 1px dashed var(--line-subtle);
   position: relative;
 }
 
@@ -335,7 +335,7 @@
   left: -44px;
   top: -8px;
   font-size: 11px;
-  color: rgba(31, 41, 51, 0.45);
+  color: var(--ink-45);
 }
 
 .now-line {
@@ -752,7 +752,7 @@
   position: sticky;
   top: 0;
   font-size: 11px;
-  color: rgba(31, 41, 51, 0.45);
+  color: var(--ink-45);
 }
 
 .week-days {
@@ -763,7 +763,7 @@
 
 .week-day {
   border-radius: 16px;
-  border: 1px solid rgba(31, 41, 51, 0.08);
+  border: 1px solid var(--line-subtle);
   background: var(--surface-solid);
   padding: 8px;
   display: flex;
@@ -785,8 +785,8 @@
     to bottom,
     transparent 0,
     transparent calc(60px * 1.1 - 1px),
-    rgba(31, 41, 51, 0.08) calc(60px * 1.1 - 1px),
-    rgba(31, 41, 51, 0.08) calc(60px * 1.1)
+    var(--line-subtle) calc(60px * 1.1 - 1px),
+    var(--line-subtle) calc(60px * 1.1)
   );
 }
 
@@ -799,7 +799,7 @@
 .month-day {
   background: var(--surface-muted);
   border-radius: 16px;
-  border: 1px solid rgba(31, 41, 51, 0.08);
+  border: 1px solid var(--line-subtle);
   padding: 10px 12px;
   min-height: 120px;
   display: flex;
@@ -870,7 +870,7 @@
 }
 
 .month-more {
-  color: rgba(31, 41, 51, 0.5);
+  color: var(--ink-50);
 }
 
 .event-popover {
