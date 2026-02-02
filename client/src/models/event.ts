@@ -5,6 +5,7 @@ export type CalendarEvent = {
   start: string
   end: string
   calendarId: string
+  colorId?: string
   color?: string
   completed: boolean
 }
@@ -21,6 +22,7 @@ export type EventDraft = {
   start: Date
   end: Date
   calendarId?: string
+  colorId?: string
 }
 
 export type CreateEventPayload = {
@@ -29,6 +31,7 @@ export type CreateEventPayload = {
   start: string
   end: string
   calendarId?: string
+  colorId?: string
   timeZone?: string
 }
 

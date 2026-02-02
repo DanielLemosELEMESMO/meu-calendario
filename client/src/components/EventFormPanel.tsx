@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { EventDraft } from '../models/event'
+import type { ColorsPayload } from '../models/colors'
 
 type EventFormPanelProps = {
   draft: EventDraft
@@ -8,6 +9,7 @@ type EventFormPanelProps = {
   onCancel: () => void
   className?: string
   style?: React.CSSProperties
+  colors?: ColorsPayload | null
 }
 
 const toLocalInputValue = (date: Date) => {
@@ -37,8 +39,10 @@ export default function EventFormPanel({
   onCancel,
   className,
   style,
+  colors,
 }: EventFormPanelProps) {
   const titleRef = useRef<HTMLInputElement | null>(null)
+  const eventColors = colors?.event ? Object.entries(colors.event) : []
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -107,6 +111,27 @@ export default function EventFormPanel({
           }
         />
       </label>
+      {eventColors.length > 0 && (
+        <label className="event-form-field">
+          <span>Cor</span>
+          <select
+            value={draft.colorId ?? ''}
+            onChange={(event) =>
+              onChange({
+                ...draft,
+                colorId: event.target.value || undefined,
+              })
+            }
+          >
+            <option value="">Padrao do calendario</option>
+            {eventColors.map(([id, color]) => (
+              <option key={id} value={id}>
+                {`Cor ${id}`}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <div className="event-form-actions">
         <button type="button" className="event-form-cancel" onClick={onCancel}>
           Cancelar

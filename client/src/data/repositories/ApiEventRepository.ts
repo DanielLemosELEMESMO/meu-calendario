@@ -1,4 +1,5 @@
 import type { CalendarEvent, CreateEventPayload } from '../../models/event'
+import type { ColorsPayload } from '../../models/colors'
 import type { EventRepository } from './EventRepository'
 
 export class ApiEventRepository implements EventRepository {
@@ -21,6 +22,18 @@ export class ApiEventRepository implements EventRepository {
     const payload = (await response.json()) as { events: CalendarEvent[] }
     this.events = payload.events
     return this.events
+  }
+
+  async getColors(): Promise<ColorsPayload> {
+    const response = await fetch('/api/colors', { credentials: 'include' })
+    if (response.status === 401) {
+      throw new Error('unauthorized')
+    }
+    if (!response.ok) {
+      throw new Error('Falha ao buscar cores.')
+    }
+    const payload = (await response.json()) as { colors: ColorsPayload }
+    return payload.colors
   }
 
   async toggleComplete(eventId: string): Promise<CalendarEvent | null> {

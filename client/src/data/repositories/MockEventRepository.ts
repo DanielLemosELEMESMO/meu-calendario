@@ -1,4 +1,5 @@
 import type { CalendarEvent } from '../../models/event'
+import type { ColorsPayload } from '../../models/colors'
 import { createMockEvents } from '../mocks/mockEvents'
 import { loadEventCache, saveEventCache } from '../cache/localEventCache'
 import type { EventRepository } from './EventRepository'
@@ -21,6 +22,17 @@ export class MockEventRepository implements EventRepository {
       const eventEnd = new Date(event.end)
       return eventEnd >= start && eventStart <= end
     })
+  }
+
+  async getColors(): Promise<ColorsPayload> {
+    return {
+      event: {
+        '1': { background: '#fef3c7', foreground: '#111827' },
+        '2': { background: '#dbeafe', foreground: '#111827' },
+        '3': { background: '#dcfce7', foreground: '#111827' },
+        '4': { background: '#fee2e2', foreground: '#111827' },
+      },
+    }
   }
 
   async toggleComplete(eventId: string): Promise<CalendarEvent | null> {

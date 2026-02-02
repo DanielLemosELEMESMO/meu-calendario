@@ -4,6 +4,7 @@ import type { CalendarEvent, CalendarEventWithDates, EventDraft } from '../../mo
 import { withDates } from '../../models/event'
 import { addDays, addMinutes, isSameDay, minutesSinceStart, startOfDay } from '../../utils/dates'
 import EventFormPanel from '../../components/EventFormPanel'
+import type { ColorsPayload } from '../../models/colors'
 
 const PIXELS_PER_MINUTE = 1.1
 const ROUND_STEP = 5
@@ -21,6 +22,7 @@ type FocusViewProps = {
     end: Date,
     commit: boolean,
   ) => Promise<void>
+  colors: ColorsPayload | null
 }
 
 export default function FocusView({
@@ -29,6 +31,7 @@ export default function FocusView({
   referenceDate,
   onCreateEvent,
   onUpdateEventTime,
+  colors,
 }: FocusViewProps) {
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -455,6 +458,7 @@ export default function FocusView({
           }}
           className={`floating panel-${panelSide}`}
           style={panelStyle}
+          colors={colors}
         />
       )}
     </section>

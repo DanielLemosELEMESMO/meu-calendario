@@ -5,6 +5,7 @@ import WeekView from './features/week/WeekView'
 import ViewTabs from './components/ViewTabs'
 import { eventRepository } from './data/repositories'
 import type { CalendarEvent, EventDraft } from './models/event'
+import type { ColorsPayload } from './models/colors'
 import { addDays, endOfDay, startOfDay } from './utils/dates'
 
 type AppView = 'focus' | 'week' | 'month'
@@ -19,6 +20,7 @@ export default function App() {
   const [activeView, setActiveView] = useState<AppView>('focus')
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [referenceDate] = useState(() => new Date())
+  const [colors, setColors] = useState<ColorsPayload | null>(null)
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -77,6 +79,23 @@ export default function App() {
     loadEvents()
   }, [activeView, referenceDate, isAuthenticated])
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setColors(null)
+      return
+    }
+    const loadColors = async () => {
+      try {
+        setColors(await eventRepository.getColors())
+      } catch (err) {
+        if (err instanceof Error && err.message === 'unauthorized') {
+          setIsAuthenticated(false)
+        }
+      }
+    }
+    loadColors()
+  }, [isAuthenticated])
+
   const onToggleComplete = async (eventId: string) => {
     const updated = await eventRepository.toggleComplete(eventId)
     if (!updated) {
@@ -110,6 +129,7 @@ export default function App() {
       start: toOffsetISOString(draft.start),
       end: toOffsetISOString(draft.end),
       calendarId: draft.calendarId,
+      colorId: draft.colorId,
       timeZone,
     })
     await loadEvents()
@@ -203,6 +223,7 @@ export default function App() {
             referenceDate={referenceDate}
             onCreateEvent={onCreateEvent}
             onUpdateEventTime={onUpdateEventTime}
+            colors={colors}
           />
         )}
         {activeView === 'week' && (
@@ -212,6 +233,7 @@ export default function App() {
             referenceDate={referenceDate}
             onCreateEvent={onCreateEvent}
             onUpdateEventTime={onUpdateEventTime}
+            colors={colors}
           />
         )}
         {activeView === 'month' && (

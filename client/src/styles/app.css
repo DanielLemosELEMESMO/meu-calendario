@@ -163,7 +163,8 @@
 }
 
 .event-form-field input,
-.event-form-field textarea {
+.event-form-field textarea,
+.event-form-field select {
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid var(--stroke);

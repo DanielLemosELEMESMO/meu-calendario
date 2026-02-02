@@ -83,6 +83,12 @@ const getEventStatusMap = async (userId, eventIds) => {
   return new Map(result.rows.map((row) => [row.event_id, row.completed]));
 };
 
+const getColorsMap = async (oauth2Client) => {
+  const calendar = getCalendarClient(oauth2Client);
+  const response = await calendar.colors.get();
+  return response.data || { event: {}, calendar: {} };
+};
+
 const parseGoogleDate = (dateValue, isEnd) => {
   if (!dateValue) return null;
   if (dateValue.dateTime) {
@@ -123,6 +129,9 @@ exports.getEvents = async (req, res) => {
       return res.status(401).json({ error: 'unauthorized' });
     }
 
+    const colors = await getColorsMap(oauth2Client).catch(() => null);
+    const eventColorMap = colors?.event || {};
+
     const calendar = getCalendarClient(oauth2Client);
     const response = await calendar.events.list({
       calendarId: 'primary',
@@ -139,6 +148,8 @@ exports.getEvents = async (req, res) => {
         if (!startDate || !endDate) {
           return null;
         }
+        const colorId = event.colorId || undefined;
+        const color = colorId ? eventColorMap[colorId]?.background : undefined;
         return {
           id: event.id,
           title: event.summary || '(Sem titulo)',
@@ -146,6 +157,8 @@ exports.getEvents = async (req, res) => {
           start: startDate.toISOString(),
           end: endDate.toISOString(),
           calendarId: event.organizer?.email || 'primary',
+          colorId,
+          color,
           completed: false,
         };
       })
@@ -166,7 +179,8 @@ exports.getEvents = async (req, res) => {
 };
 
 exports.createEvent = async (req, res) => {
-  const { title, description, start, end, calendarId, timeZone } = req.body || {};
+  const { title, description, start, end, calendarId, timeZone, colorId } =
+    req.body || {};
   if (!title || !start || !end) {
     return res.status(400).json({ error: 'invalid_payload' });
   }
@@ -183,6 +197,7 @@ exports.createEvent = async (req, res) => {
       requestBody: {
         summary: title,
         description,
+        colorId,
         start: {
           dateTime: start,
           timeZone,
@@ -201,6 +216,13 @@ exports.createEvent = async (req, res) => {
       return res.status(500).json({ error: 'invalid_event' });
     }
 
+    const colors = await getColorsMap(oauth2Client).catch(() => null);
+    const eventColorMap = colors?.event || {};
+    const createdColorId = created.colorId || undefined;
+    const createdColor = createdColorId
+      ? eventColorMap[createdColorId]?.background
+      : undefined;
+
     return res.json({
       event: {
         id: created.id,
@@ -209,6 +231,8 @@ exports.createEvent = async (req, res) => {
         start: startDate.toISOString(),
         end: endDate.toISOString(),
         calendarId: created.organizer?.email || 'primary',
+        colorId: createdColorId,
+        color: createdColor,
         completed: false,
       },
     });
@@ -220,7 +244,8 @@ exports.createEvent = async (req, res) => {
 
 exports.updateEvent = async (req, res) => {
   const { id } = req.params;
-  const { title, description, start, end, calendarId, timeZone } = req.body || {};
+  const { title, description, start, end, calendarId, timeZone, colorId } =
+    req.body || {};
   if (!id) {
     return res.status(400).json({ error: 'invalid_event' });
   }
@@ -235,6 +260,7 @@ exports.updateEvent = async (req, res) => {
     const requestBody = {};
     if (title) requestBody.summary = title;
     if (typeof description !== 'undefined') requestBody.description = description;
+    if (typeof colorId !== 'undefined') requestBody.colorId = colorId;
     if (start) {
       requestBody.start = { dateTime: start, timeZone };
     }
@@ -255,6 +281,13 @@ exports.updateEvent = async (req, res) => {
       return res.status(500).json({ error: 'invalid_event' });
     }
 
+    const colors = await getColorsMap(oauth2Client).catch(() => null);
+    const eventColorMap = colors?.event || {};
+    const updatedColorId = updated.colorId || undefined;
+    const updatedColor = updatedColorId
+      ? eventColorMap[updatedColorId]?.background
+      : undefined;
+
     return res.json({
       event: {
         id: updated.id,
@@ -263,11 +296,27 @@ exports.updateEvent = async (req, res) => {
         start: startDate.toISOString(),
         end: endDate.toISOString(),
         calendarId: updated.organizer?.email || 'primary',
+        colorId: updatedColorId,
+        color: updatedColor,
         completed: false,
       },
     });
   } catch (error) {
     console.error('Erro ao atualizar evento:', error);
+    return res.status(500).json({ error: 'server_error' });
+  }
+};
+
+exports.getColors = async (req, res) => {
+  try {
+    const oauth2Client = await getAuthorizedClient(req.userId);
+    if (!oauth2Client) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+    const colors = await getColorsMap(oauth2Client);
+    return res.json({ colors });
+  } catch (error) {
+    console.error('Erro ao buscar cores:', error);
     return res.status(500).json({ error: 'server_error' });
   }
 };

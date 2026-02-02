@@ -13,6 +13,7 @@ import {
   minutesSinceStart,
   startOfDay,
 } from '../../utils/dates'
+import type { ColorsPayload } from '../../models/colors'
 
 const PIXELS_PER_MINUTE = 1.1
 const DAY_HEIGHT = 24 * 60 * PIXELS_PER_MINUTE
@@ -32,6 +33,7 @@ type WeekViewProps = {
     end: Date,
     commit: boolean,
   ) => Promise<void>
+  colors: ColorsPayload | null
 }
 
 type ResizeState = {
@@ -46,6 +48,7 @@ export default function WeekView({
   referenceDate,
   onCreateEvent,
   onUpdateEventTime,
+  colors,
 }: WeekViewProps) {
   const start = startOfDay(addDays(referenceDate, -referenceDate.getDay()))
   const days = Array.from({ length: 7 }).map((_, index) => addDays(start, index))
@@ -884,6 +887,7 @@ export default function WeekView({
           }}
           className={`floating panel-${panelSide}`}
           style={panelStyle}
+          colors={colors}
         />
       )}
     </section>
