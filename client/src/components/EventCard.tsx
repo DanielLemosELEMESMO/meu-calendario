@@ -32,7 +32,11 @@ export default function EventCard({
       ]
         .filter(Boolean)
         .join(' ')}
-      style={{ borderColor: event.color || 'var(--accent-2)' }}
+      style={
+        event.color
+          ? ({ ['--event-bg' as string]: event.color } as React.CSSProperties)
+          : undefined
+      }
       onClick={() => onSelect(event.id)}
     >
       {density !== 'long' ? (

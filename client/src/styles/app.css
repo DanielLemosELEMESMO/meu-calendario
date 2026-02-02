@@ -21,6 +21,82 @@
   gap: 16px;
 }
 
+.theme-toggle {
+  position: relative;
+  width: 31px;
+  height: 48px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: var(--soft);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  align-items: center;
+  justify-items: center;
+  padding: 4px 6px;
+  gap: 6px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.theme-toggle-track {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  padding: 2px 0;
+  transition: background 0.2s ease;
+}
+
+.theme-toggle-thumb {
+  width: 24px;
+  height: 23px;
+  border-radius: 50%;
+  background: var(--ink-1);
+  transition: transform 0.2s ease, background 0.2s ease;
+  transform: translateY(-10px);
+}
+
+.theme-toggle.theme-dark .theme-toggle-thumb {
+  transform: translateY(10px);
+}
+
+.theme-toggle-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--ink-2);
+  opacity: 0.7;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.theme-toggle-icon svg {
+  width: 100%;
+  height: 100%;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.theme-icon-moon svg {
+  fill: currentColor;
+  stroke: none;
+}
+
+.theme-toggle.theme-light .theme-icon-sun,
+.theme-toggle.theme-dark .theme-icon-moon {
+  opacity: 1;
+  color: var(--theme-icon-active);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .theme-toggle-track {
+    background: rgba(226, 232, 240, 0.2);
+  }
+}
+
 .brand {
   display: flex;
   flex-direction: column;
@@ -419,9 +495,8 @@
 
 .event-card {
   height: 100%;
-  background: #fffaf5;
-  border: 1px solid var(--stroke);
-  border-left: 5px solid var(--accent-2);
+  background: var(--event-bg, var(--event-bg-default));
+  border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 8px;
   padding: 0 14px 0 14px;
   display: flex;
@@ -576,12 +651,12 @@
 }
 
 .event-active {
-  background: #fef9f2;
-  border-color: var(--accent-1);
+  outline: 2px solid var(--event-outline-active);
+  outline-offset: 0;
 }
 
 .event-completed {
-  background: #f0fdf4;
+  opacity: 0.82;
 }
 
 .event-pulse .event-card {

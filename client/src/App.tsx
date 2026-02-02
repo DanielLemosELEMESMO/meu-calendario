@@ -3,6 +3,7 @@ import FocusView from './features/focus/FocusView'
 import MonthView from './features/month/MonthView'
 import WeekView from './features/week/WeekView'
 import ViewTabs from './components/ViewTabs'
+import ThemeToggle from './components/ThemeToggle'
 import { eventRepository } from './data/repositories'
 import type { CalendarEvent, EventDraft } from './models/event'
 import type { ColorsPayload } from './models/colors'
@@ -21,6 +22,7 @@ export default function App() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [referenceDate] = useState(() => new Date())
   const [colors, setColors] = useState<ColorsPayload | null>(null)
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -39,6 +41,21 @@ export default function App() {
     }
     checkAuth()
   }, [])
+
+  useEffect(() => {
+    const saved = localStorage.getItem('mc_theme')
+    if (saved === 'light' || saved === 'dark') {
+      setTheme(saved)
+      return
+    }
+    const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches
+    setTheme(prefersDark ? 'dark' : 'light')
+  }, [])
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    localStorage.setItem('mc_theme', theme)
+  }, [theme])
 
   const getRangeForView = (view: AppView, now: Date) => {
     if (view === 'focus') {
@@ -204,6 +221,7 @@ export default function App() {
           <span className="brand-tagline">Organize o agora, simplifique o resto.</span>
         </div>
         <div className="app-header-actions">
+          <ThemeToggle value={theme} onChange={setTheme} />
           <ViewTabs
             options={views}
             value={activeView}

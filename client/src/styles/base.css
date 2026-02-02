@@ -8,8 +8,8 @@
 
 :root {
   color-scheme: light;
-  --bg-1: #f6f3ec;
-  --bg-2: #eef3f7;
+  --bg-1: #f0f4f8;
+  --bg-2: #e7eef6;
   --bg-3: #c7d1db;
   --ink-1: #1d232c;
   --ink-2: #5a6573;
@@ -19,7 +19,48 @@
   --card: #ffffff;
   --stroke: rgba(29, 35, 44, 0.12);
   --soft: rgba(255, 255, 255, 0.6);
+  --event-bg-default: rgb(69, 192, 249);
+  --event-outline-active: rgba(15, 23, 42, 0.2);
+  --theme-icon-active: #f8fafc;
   font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg-1: #0b1220;
+  --bg-2: #111827;
+  --bg-3: #1f2937;
+  --ink-1: #e5e7eb;
+  --ink-2: #9ca3af;
+  --accent-1: #fb923c;
+  --accent-2: #38bdf8;
+  --accent-3: #fb7185;
+  --card: #0f172a;
+  --stroke: rgba(148, 163, 184, 0.2);
+  --soft: rgba(15, 23, 42, 0.7);
+  --event-bg-default: rgba(56, 189, 248, 0.2);
+  --event-outline-active: rgba(226, 232, 240, 0.3);
+  --theme-icon-active: #0b1220;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --bg-1: #0b1220;
+    --bg-2: #111827;
+    --bg-3: #1f2937;
+    --ink-1: #e5e7eb;
+    --ink-2: #9ca3af;
+    --accent-1: #fb923c;
+    --accent-2: #38bdf8;
+    --accent-3: #fb7185;
+    --card: #0f172a;
+    --stroke: rgba(148, 163, 184, 0.2);
+    --soft: rgba(15, 23, 42, 0.7);
+    --event-bg-default: rgba(56, 189, 248, 0.2);
+    --event-outline-active: rgba(226, 232, 240, 0.3);
+    --theme-icon-active: #0b1220;
+  }
 }
 
 body {
