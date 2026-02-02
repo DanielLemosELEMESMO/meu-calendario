@@ -398,18 +398,18 @@
   position: absolute;
   left: 30%;
   right: 30%;
-  height: 8px;
+  height: 4px;
   border-radius: 999px;
   background: var(--accent-2);
   cursor: ns-resize;
 }
 
 .draft-handle-top {
-  top: -4px;
+  top: -2px;
 }
 
 .draft-handle-bottom {
-  bottom: -4px;
+  bottom: -3px;
 }
 
 .event-card {
