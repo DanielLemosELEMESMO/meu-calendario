@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import DayColumn from './DayColumn'
 import type { CalendarEvent, CalendarEventWithDates, EventDraft } from '../../models/event'
 import { withDates } from '../../models/event'
@@ -38,6 +38,10 @@ export default function FocusView({
     undefined,
   )
   const [panelSide, setPanelSide] = useState<'left' | 'right'>('right')
+  const [draftAnchorNode, setDraftAnchorNode] = useState<HTMLDivElement | null>(
+    null,
+  )
+  const panelRafRef = useRef<number | null>(null)
   const dragLayerRef = useRef<HTMLDivElement | null>(null)
   const dragStateRef = useRef<{
     event: CalendarEventWithDates
@@ -63,6 +67,7 @@ export default function FocusView({
 
   useEffect(() => {
     if (!draft) {
+      setDraftAnchorNode(null)
       return
     }
 
@@ -343,6 +348,64 @@ export default function FocusView({
     }
   }, [draggingEventId, onUpdateEventTime, referenceDate])
 
+  useLayoutEffect(() => {
+    if (!draft || !draftAnchorNode) {
+      setPanelStyle(undefined)
+      return
+    }
+
+    const updatePanelPosition = () => {
+      const anchor = draftAnchorNode
+      if (!anchor) return
+      const rect = anchor.getBoundingClientRect()
+      const panel = containerRef.current?.querySelector<HTMLElement>(
+        '.event-form-panel.floating',
+      )
+      const panelRect = panel?.getBoundingClientRect()
+      const width = panelRect?.width ?? 280
+      const height = panelRect?.height ?? 320
+      const gap = 16
+      const fitsRight = rect.right + gap + width <= window.innerWidth
+      const fitsLeft = rect.left - gap - width >= 0
+      const useRight = fitsRight || !fitsLeft
+      const left = useRight ? rect.right + gap : rect.left - gap - width
+      const top = Math.min(
+        Math.max(12, rect.top),
+        Math.max(12, window.innerHeight - height - 12),
+      )
+      setPanelSide(useRight ? 'right' : 'left')
+      setPanelStyle({
+        position: 'fixed',
+        left: Math.max(12, Math.min(left, window.innerWidth - width - 12)),
+        top,
+        width,
+        maxHeight: window.innerHeight - 24,
+        overflowY: 'auto',
+      })
+    }
+
+    const scheduleUpdate = () => {
+      if (panelRafRef.current) return
+      panelRafRef.current = window.requestAnimationFrame(() => {
+        panelRafRef.current = null
+        updatePanelPosition()
+      })
+    }
+
+    updatePanelPosition()
+    window.requestAnimationFrame(updatePanelPosition)
+    window.addEventListener('resize', scheduleUpdate)
+    window.addEventListener('scroll', scheduleUpdate, true)
+    return () => {
+      window.removeEventListener('resize', scheduleUpdate)
+      window.removeEventListener('scroll', scheduleUpdate, true)
+      if (panelRafRef.current) {
+        window.cancelAnimationFrame(panelRafRef.current)
+        panelRafRef.current = null
+      }
+    }
+  }, [draft, draftAnchorNode])
+
   return (
     <section className="view-with-panel view-floating" ref={containerRef}>
       <div className="focus-view">
@@ -361,23 +424,7 @@ export default function FocusView({
             onDraftSelect={() => setSelectedId(null)}
             popoverAlign={index >= days.length - 1 ? 'left' : 'right'}
             onClosePopover={() => setSelectedId(null)}
-            onDraftLayout={(rect) => {
-              if (!rect || !containerRef.current) {
-                return
-              }
-              const containerRect = containerRef.current.getBoundingClientRect()
-              const gap = 16
-              const availableRight = containerRect.right - rect.right
-              const availableLeft = rect.left - containerRect.left
-              const width = 280
-              const useRight = availableRight >= width + gap || availableRight >= availableLeft
-              const left = useRight
-                ? rect.right - containerRect.left + gap
-                : rect.left - containerRect.left - width - gap
-              const top = Math.max(0, rect.top - containerRect.top)
-              setPanelSide(useRight ? 'right' : 'left')
-              setPanelStyle({ left, top, width })
-            }}
+            onDraftLayout={setDraftAnchorNode}
             onEventDragStart={handleEventDragStart}
             onEventResizeStart={handleEventResizeStart}
             draggingEventId={draggingEventId}

@@ -63,6 +63,7 @@ export default function WeekView({
     undefined,
   )
   const [panelSide, setPanelSide] = useState<'left' | 'right'>('right')
+  const panelRafRef = useRef<number | null>(null)
   const dragLayerRef = useRef<HTMLDivElement | null>(null)
   const dragStateRef = useRef<{
     event: CalendarEventWithDates
@@ -513,19 +514,55 @@ export default function WeekView({
       setPanelStyle(undefined)
       return
     }
-    const rect = draftRef.current.getBoundingClientRect()
-    const containerRect = containerRef.current.getBoundingClientRect()
-    const gap = 16
-    const width = 280
-    const availableRight = containerRect.right - rect.right
-    const availableLeft = rect.left - containerRect.left
-    const useRight = availableRight >= width + gap || availableRight >= availableLeft
-    const left = useRight
-      ? rect.right - containerRect.left + gap
-      : rect.left - containerRect.left - width - gap
-    const top = Math.max(0, rect.top - containerRect.top)
-    setPanelSide(useRight ? 'right' : 'left')
-    setPanelStyle({ left, top, width })
+    const updatePanelPosition = () => {
+      if (!draftRef.current) return
+      const rect = draftRef.current.getBoundingClientRect()
+      const panel = containerRef.current?.querySelector<HTMLElement>(
+        '.event-form-panel.floating',
+      )
+      const panelRect = panel?.getBoundingClientRect()
+      const width = panelRect?.width ?? 280
+      const height = panelRect?.height ?? 320
+      const gap = 16
+      const fitsRight = rect.right + gap + width <= window.innerWidth
+      const fitsLeft = rect.left - gap - width >= 0
+      const useRight = fitsRight || !fitsLeft
+      const left = useRight ? rect.right + gap : rect.left - gap - width
+      const top = Math.min(
+        Math.max(12, rect.top),
+        Math.max(12, window.innerHeight - height - 12),
+      )
+      setPanelSide(useRight ? 'right' : 'left')
+      setPanelStyle({
+        position: 'fixed',
+        left: Math.max(12, Math.min(left, window.innerWidth - width - 12)),
+        top,
+        width,
+        maxHeight: window.innerHeight - 24,
+        overflowY: 'auto',
+      })
+    }
+
+    const scheduleUpdate = () => {
+      if (panelRafRef.current) return
+      panelRafRef.current = window.requestAnimationFrame(() => {
+        panelRafRef.current = null
+        updatePanelPosition()
+      })
+    }
+
+    updatePanelPosition()
+    window.requestAnimationFrame(updatePanelPosition)
+    window.addEventListener('resize', scheduleUpdate)
+    window.addEventListener('scroll', scheduleUpdate, true)
+    return () => {
+      window.removeEventListener('resize', scheduleUpdate)
+      window.removeEventListener('scroll', scheduleUpdate, true)
+      if (panelRafRef.current) {
+        window.cancelAnimationFrame(panelRafRef.current)
+        panelRafRef.current = null
+      }
+    }
   }, [draft])
 
   const handleGridPointerDown = (

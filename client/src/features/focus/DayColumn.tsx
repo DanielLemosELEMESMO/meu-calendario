@@ -28,7 +28,7 @@ type DayColumnProps = {
   draft: EventDraft | null
   onDraftChange: (draft: EventDraft | null) => void
   onDraftSelect: () => void
-  onDraftLayout: (rect: DOMRect | null) => void
+  onDraftLayout: (node: HTMLDivElement | null) => void
   onEventDragStart: (payload: {
     event: CalendarEventWithDates
     grabOffsetMinutes: number
@@ -106,12 +106,14 @@ export default function DayColumn({
   }, [isToday])
 
   useEffect(() => {
-    if (!draftRef.current || !draft) {
-      onDraftLayout(null)
+    if (!draft || !isSameDay(draft.start, date)) {
       return
     }
-    onDraftLayout(draftRef.current.getBoundingClientRect())
-  }, [draft, onDraftLayout])
+    if (!draftRef.current) {
+      return
+    }
+    onDraftLayout(draftRef.current)
+  }, [draft, date, onDraftLayout])
 
   useEffect(() => {
     if (!resizeMode || !draft || !gridRef.current) {
@@ -178,16 +180,30 @@ export default function DayColumn({
       if (!anchor) return
       const rect = anchor.getBoundingClientRect()
       const gap = 12
-      const width = 280
-      const fitsRight = rect.right + gap + width <= window.innerWidth
-      const useRight = popoverAlign === 'right' ? fitsRight : !fitsRight
-      const left = useRight ? rect.right + gap : rect.left - gap - width
-      const top = Math.max(12, Math.min(rect.top, window.innerHeight - 120))
+      const fallbackWidth = 280
+      const popover = document.querySelector<HTMLElement>(
+        `[data-popover-for="${safeId}"]`,
+      )
+      const popoverRect = popover?.getBoundingClientRect()
+      const width = popoverRect?.width ?? fallbackWidth
+      const height = popoverRect?.height ?? 180
+      const spaceRight = window.innerWidth - rect.right - gap
+      const spaceLeft = rect.left - gap
+      const preferRight = popoverAlign === 'right'
+      const canRight = spaceRight >= width
+      const canLeft = spaceLeft >= width
+      const useRight = preferRight ? canRight || !canLeft : !canRight && canLeft ? false : canRight
+      const rawLeft = useRight ? rect.right + gap : rect.left - gap - width
+      const left = Math.max(12, Math.min(rawLeft, window.innerWidth - width - 12))
+      const rawTop = rect.top
+      const top = Math.max(12, Math.min(rawTop, window.innerHeight - height - 12))
       setPopoverStyle({
         position: 'fixed',
-        left: Math.max(12, left),
+        left,
         top,
         width,
+        maxHeight: window.innerHeight - 24,
+        overflowY: 'auto',
       })
     }
 
@@ -200,6 +216,7 @@ export default function DayColumn({
     }
 
     updatePosition()
+    window.requestAnimationFrame(updatePosition)
     window.addEventListener('resize', scheduleUpdate)
     window.addEventListener('scroll', scheduleUpdate, true)
     const scrollNode = scrollRef.current
@@ -553,6 +570,7 @@ export default function DayColumn({
               showActions={false}
               className="event-popover-floating"
               style={popoverStyle}
+              popoverFor={selectedId}
             />,
             document.body,
           )

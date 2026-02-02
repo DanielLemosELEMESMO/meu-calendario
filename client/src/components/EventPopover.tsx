@@ -10,6 +10,7 @@ type EventPopoverProps = {
   showActions?: boolean
   className?: string
   style?: React.CSSProperties
+  popoverFor?: string
 }
 
 export default function EventPopover({
@@ -21,6 +22,7 @@ export default function EventPopover({
   showActions = true,
   className,
   style,
+  popoverFor,
 }: EventPopoverProps) {
   return (
     <div
@@ -33,6 +35,7 @@ export default function EventPopover({
         .filter(Boolean)
         .join(' ')}
       style={style}
+      data-popover-for={popoverFor}
     >
       <header className="popover-header">
         <div>
