@@ -120,6 +120,11 @@ export default function MonthView({
                           ? 'month-event month-event-selected'
                           : 'month-event'
                       }
+                      style={
+                        event.color
+                          ? ({ ['--event-bg' as string]: event.color } as React.CSSProperties)
+                          : undefined
+                      }
                       onClick={() => {
                         if (closeTimerRef.current) {
                           window.clearTimeout(closeTimerRef.current)

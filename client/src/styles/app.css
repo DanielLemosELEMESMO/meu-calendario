@@ -818,7 +818,7 @@
 }
 
 .month-event {
-  background: #fef3c7;
+  background: var(--event-bg, var(--event-bg-default));
   padding: 4px 6px;
   border-radius: 10px;
   text-align: left;
