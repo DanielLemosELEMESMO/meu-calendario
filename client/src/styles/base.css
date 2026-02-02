@@ -68,7 +68,7 @@
   --button-primary-text: #0b1220;
   --button-secondary-bg: #111827;
   --button-secondary-text: #e5e7eb;
-  --event-bg-default: rgba(56, 189, 248, 0.2);
+  --event-bg-default: rgb(44, 150, 196);
   --event-outline-active: rgba(226, 232, 240, 0.3);
   --theme-icon-active: #0b1220;
 }
