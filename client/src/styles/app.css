@@ -122,7 +122,7 @@
   display: flex;
   gap: 12px;
   padding: 8px;
-  background: var(--soft);
+  background: var(--tab-bg);
   border: 1px solid var(--stroke);
   border-radius: 999px;
 }
@@ -145,13 +145,13 @@
   padding: 10px 20px;
   border-radius: 999px;
   font-weight: 600;
-  color: var(--ink-2);
+  color: var(--tab-text);
   transition: all 0.1s ease;
 }
 
 .tab-active {
-  background: var(--ink-1);
-  color: #fff;
+  background: var(--tab-active-bg);
+  color: var(--tab-active-text);
 }
 
 .app-main {
@@ -199,7 +199,7 @@
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 18px;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--panel);
   border: 1px solid var(--stroke);
   border-radius: 28px;
 }
@@ -213,7 +213,7 @@
 }
 
 .event-form-panel {
-  background: var(--card);
+  background: var(--popover-bg);
   border: 1px solid var(--stroke);
   border-radius: 20px;
   padding: 20px;
@@ -250,6 +250,8 @@
   border: 1px solid var(--stroke);
   font-size: 14px;
   font-family: 'Space Grotesk', sans-serif;
+  background: var(--input-bg);
+  color: var(--input-text);
 }
 
 .event-form-actions {
@@ -259,7 +261,8 @@
 }
 
 .event-form-cancel {
-  background: #f8fafc;
+  background: var(--button-secondary-bg);
+  color: var(--button-secondary-text);
   border: 1px solid var(--stroke);
   border-radius: 999px;
   padding: 8px 14px;
@@ -267,8 +270,8 @@
 }
 
 .event-form-save {
-  background: var(--ink-1);
-  color: #fff;
+  background: var(--button-primary-bg);
+  color: var(--button-primary-text);
   border-radius: 999px;
   padding: 8px 16px;
   font-weight: 600;
@@ -313,7 +316,7 @@
   overflow-y: auto;
   padding: 10px 12px 14px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.35);
+  background: var(--surface);
 }
 
 .day-grid {
@@ -340,7 +343,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, var(--accent-2), transparent);
+  background: linear-gradient(90deg, var(--accent-3), transparent);
   z-index: 5;
 }
 
@@ -412,8 +415,9 @@
 .event-ghost-card {
   height: 100%;
   border-radius: 8px;
-  border: 2px dashed rgba(31, 41, 51, 0.25);
-  background: rgba(148, 163, 184, 0.12);
+  border: 1px dashed rgba(31, 41, 51, 0.25);
+  background: var(--event-bg, var(--event-bg-default));
+  opacity: 0.6;
 }
 
 .week-day-grid .event-wrap {
@@ -456,9 +460,8 @@
 
 .drag-layer-card {
   height: 100%;
-  background: #fffaf5;
+  background: var(--event-bg, var(--event-bg-default));
   border: 1px solid var(--stroke);
-  border-left: 5px solid var(--accent-2);
   border-radius: 8px;
   padding: 12px 14px;
   display: flex;
@@ -740,7 +743,7 @@
 .week-day {
   border-radius: 16px;
   border: 1px solid rgba(31, 41, 51, 0.08);
-  background: #f8fafc;
+  background: var(--surface-solid);
   padding: 8px;
   display: flex;
   flex-direction: column;
@@ -755,7 +758,7 @@
 .week-day-grid {
   position: relative;
   border-radius: 12px;
-  background: #fff;
+  background: var(--surface-muted);
   overflow: hidden;
   background-image: repeating-linear-gradient(
     to bottom,
@@ -773,7 +776,7 @@
 }
 
 .month-day {
-  background: #ffffff;
+  background: var(--surface-muted);
   border-radius: 16px;
   border: 1px solid rgba(31, 41, 51, 0.08);
   padding: 10px 12px;
@@ -835,9 +838,9 @@
   top: 0;
   min-width: 240px;
   max-width: 280px;
-  background: #fff;
+  background: var(--popover-bg);
   border-radius: 16px;
-  border: 1px solid rgba(31, 41, 51, 0.12);
+  border: 1px solid var(--stroke);
   padding: 14px;
   z-index: 10;
   animation: pop 0.1s ease-out;
@@ -892,8 +895,8 @@
 }
 
 .popover-action {
-  background: var(--ink-1);
-  color: #fff;
+  background: var(--button-primary-bg);
+  color: var(--button-primary-text);
   border-radius: 999px;
   padding: 8px 14px;
   font-size: 12px;

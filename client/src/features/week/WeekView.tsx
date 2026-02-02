@@ -865,7 +865,14 @@ export default function WeekView({
       </div>
       {draggingEvent && (
         <div ref={dragLayerRef} className="drag-layer">
-          <div className="drag-layer-card">
+          <div
+            className="drag-layer-card"
+            style={
+              draggingEvent.color
+                ? ({ ['--event-bg' as string]: draggingEvent.color } as CSSProperties)
+                : undefined
+            }
+          >
             <span className="drag-layer-title">
               {draggingEvent.title || 'Novo evento'}
             </span>
