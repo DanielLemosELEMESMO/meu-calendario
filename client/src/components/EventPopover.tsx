@@ -6,7 +6,10 @@ type EventPopoverProps = {
   align?: 'left' | 'right'
   isClosing?: boolean
   onClose: () => void
-  onToggleComplete: (id: string) => void
+  onToggleComplete?: (id: string) => void
+  showActions?: boolean
+  className?: string
+  style?: React.CSSProperties
 }
 
 export default function EventPopover({
@@ -15,12 +18,21 @@ export default function EventPopover({
   isClosing = false,
   onClose,
   onToggleComplete,
+  showActions = true,
+  className,
+  style,
 }: EventPopoverProps) {
   return (
     <div
-      className={`event-popover popover-${align} ${
-        isClosing ? 'popover-exit' : ''
-      }`.trim()}
+      className={[
+        'event-popover',
+        `popover-${align}`,
+        isClosing ? 'popover-exit' : '',
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      style={style}
     >
       <header className="popover-header">
         <div>
@@ -34,15 +46,17 @@ export default function EventPopover({
       {event.description && (
         <p className="popover-description">{event.description}</p>
       )}
-      <div className="popover-actions">
-        <button
-          className="popover-action"
-          type="button"
-          onClick={() => onToggleComplete(event.id)}
-        >
-          {event.completed ? 'Marcar pendente' : 'Concluir evento'}
-        </button>
-      </div>
+      {showActions && onToggleComplete && (
+        <div className="popover-actions">
+          <button
+            className="popover-action"
+            type="button"
+            onClick={() => onToggleComplete(event.id)}
+          >
+            {event.completed ? 'Marcar pendente' : 'Concluir evento'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

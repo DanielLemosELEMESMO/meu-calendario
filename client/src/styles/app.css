@@ -451,9 +451,9 @@
 
 .event-expanded-wrap {
   z-index: 20;
-  height: var(--event-expanded-height);
-  left: 12px;
-  right: 6px;
+  height: var(--event-height);
+  left: 18px;
+  right: 10px;
 }
 
 .event-card:hover {
@@ -550,11 +550,12 @@
 }
 
 .event-expanded {
-  transform: translateY(-2px) scale(1.01);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
 }
 
 .event-expanded:hover {
-  transform: translateY(-3px) scale(1.015);
+  transform: translateY(-2px);
 }
 
 .event-expanded .event-title {
@@ -563,8 +564,8 @@
 
 .event-expanded .event-description {
   opacity: 1;
-  max-height: 260px;
-  -webkit-line-clamp: 4;
+  max-height: 120px;
+  -webkit-line-clamp: 3;
 }
 
 .event-short.event-expanded .event-header,
@@ -759,6 +760,11 @@
   padding: 14px;
   z-index: 10;
   animation: pop 0.1s ease-out;
+}
+
+.event-popover-floating {
+  position: fixed;
+  z-index: 200;
 }
 
 .event-popover.popover-exit {

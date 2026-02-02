@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import EventCard from '../../components/EventCard'
+import EventPopover from '../../components/EventPopover'
 import type { CalendarEventWithDates, EventDraft } from '../../models/event'
 import {
   formatDayLabel,
@@ -41,6 +43,8 @@ type DayColumnProps = {
     clientY: number
   }) => void
   draggingEventId: string | null
+  popoverAlign?: 'left' | 'right'
+  onClosePopover: () => void
 }
 
 export default function DayColumn({
@@ -58,6 +62,8 @@ export default function DayColumn({
   onEventDragStart,
   onEventResizeStart,
   draggingEventId,
+  popoverAlign = 'right',
+  onClosePopover,
 }: DayColumnProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const gridRef = useRef<HTMLDivElement | null>(null)
@@ -70,6 +76,19 @@ export default function DayColumn({
     grabOffsetMinutes: number
     durationMinutes: number
   } | null>(null)
+  const pendingDragRef = useRef<{
+    event: CalendarEventWithDates
+    startX: number
+    startY: number
+    grabOffsetMinutes: number
+    durationMinutes: number
+  } | null>(null)
+  const [isPendingDrag, setIsPendingDrag] = useState(false)
+  const DRAG_START_THRESHOLD_PX = 6
+  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties | undefined>(
+    undefined,
+  )
+  const popoverRafRef = useRef<number | null>(null)
 
   const eventsWithDates = useMemo(() => events, [events])
 
@@ -142,6 +161,61 @@ export default function DayColumn({
   }, [resizeMode, draft, dayStart, onDraftChange])
 
   useEffect(() => {
+    if (!selectedId) {
+      setPopoverStyle(undefined)
+      return
+    }
+
+    const safeId =
+      typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+        ? CSS.escape(selectedId)
+        : selectedId.replace(/"/g, '\\"')
+
+    const updatePosition = () => {
+      const anchor = document.querySelector<HTMLElement>(
+        `[data-event-id="${safeId}"] .event-card`,
+      )
+      if (!anchor) return
+      const rect = anchor.getBoundingClientRect()
+      const gap = 12
+      const width = 280
+      const fitsRight = rect.right + gap + width <= window.innerWidth
+      const useRight = popoverAlign === 'right' ? fitsRight : !fitsRight
+      const left = useRight ? rect.right + gap : rect.left - gap - width
+      const top = Math.max(12, Math.min(rect.top, window.innerHeight - 120))
+      setPopoverStyle({
+        position: 'fixed',
+        left: Math.max(12, left),
+        top,
+        width,
+      })
+    }
+
+    const scheduleUpdate = () => {
+      if (popoverRafRef.current) return
+      popoverRafRef.current = window.requestAnimationFrame(() => {
+        popoverRafRef.current = null
+        updatePosition()
+      })
+    }
+
+    updatePosition()
+    window.addEventListener('resize', scheduleUpdate)
+    window.addEventListener('scroll', scheduleUpdate, true)
+    const scrollNode = scrollRef.current
+    scrollNode?.addEventListener('scroll', scheduleUpdate, { passive: true })
+    return () => {
+      window.removeEventListener('resize', scheduleUpdate)
+      window.removeEventListener('scroll', scheduleUpdate, true)
+      scrollNode?.removeEventListener('scroll', scheduleUpdate)
+      if (popoverRafRef.current) {
+        window.cancelAnimationFrame(popoverRafRef.current)
+        popoverRafRef.current = null
+      }
+    }
+  }, [selectedId, popoverAlign])
+
+  useEffect(() => {
     if (!isDraftDragging || !draft) {
       return
     }
@@ -192,6 +266,46 @@ export default function DayColumn({
       window.removeEventListener('pointerup', onUp)
     }
   }, [dayStart, draft, isDraftDragging, onDraftChange])
+
+  useEffect(() => {
+    if (!isPendingDrag || !pendingDragRef.current) {
+      return
+    }
+
+    const onMove = (event: PointerEvent) => {
+      if (!pendingDragRef.current) return
+      const { startX, startY, event: targetEvent, grabOffsetMinutes, durationMinutes } =
+        pendingDragRef.current
+      const deltaX = event.clientX - startX
+      const deltaY = event.clientY - startY
+      if (
+        Math.hypot(deltaX, deltaY) < DRAG_START_THRESHOLD_PX
+      ) {
+        return
+      }
+      pendingDragRef.current = null
+      setIsPendingDrag(false)
+      onEventDragStart({
+        event: targetEvent,
+        grabOffsetMinutes,
+        durationMinutes,
+        clientX: event.clientX,
+        clientY: event.clientY,
+      })
+    }
+
+    const onUp = () => {
+      pendingDragRef.current = null
+      setIsPendingDrag(false)
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp, { once: true })
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+  }, [isPendingDrag, onEventDragStart])
 
   const handleGridPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     event.stopPropagation()
@@ -301,13 +415,14 @@ export default function DayColumn({
                     const grabOffsetMinutesRaw = pointerMinutes - startMinutes
                     const grabOffsetMinutes =
                       Math.round(grabOffsetMinutesRaw / ROUND_STEP) * ROUND_STEP
-                    onEventDragStart({
+                    pendingDragRef.current = {
                       event,
+                      startX: eventPointer.clientX,
+                      startY: eventPointer.clientY,
                       grabOffsetMinutes,
                       durationMinutes,
-                      clientX: eventPointer.clientX,
-                      clientY: eventPointer.clientY,
-                    })
+                    }
+                    setIsPendingDrag(true)
                   }}
                 >
                   <div className="event-resize-handles">
@@ -424,6 +539,24 @@ export default function DayColumn({
           </div>
         </div>
       </div>
+      {selectedId &&
+        popoverStyle &&
+        typeof document !== 'undefined' &&
+        (() => {
+          const selectedEvent = eventsWithDates.find((item) => item.id === selectedId)
+          if (!selectedEvent) return null
+          return createPortal(
+            <EventPopover
+              event={selectedEvent}
+              align={popoverAlign}
+              onClose={onClosePopover}
+              showActions={false}
+              className="event-popover-floating"
+              style={popoverStyle}
+            />,
+            document.body,
+          )
+        })()}
     </section>
   )
 }

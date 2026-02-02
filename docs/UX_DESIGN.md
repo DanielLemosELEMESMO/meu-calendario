@@ -48,6 +48,20 @@ O design da aplicação deve ser centrado em ajudar o usuário a entender o que 
 
 ## 4. Fluxo de Criação de Eventos
 
-- **Gatilho:** O usuário pode clicar e arrastar em um espaço de tempo vazio em qualquer visualização de agenda (Foco, Semana, Dia).
-- **Ação:** Esta ação não abre um pequeno pop-up. Em vez disso, ela transiciona o usuário para uma **tela de edição dedicada** (ou um modal grande) onde ele pode preencher o título, descrição e outros detalhes do evento de forma confortável.
+### 4.1. Criação com Draft (Foco e Semana)
+- **Gatilho:** clique em um horário vazio para criar um "esqueleto" (draft).
+- **Ajuste de duração:** arrastar as extremidades superior/inferior do draft.
+- **Mover draft:** arrastar o bloco de criação para ajustar horário e dia.
+- **Formulário lateral:** painel ao lado com título, descrição, início, fim e botão salvar.
+- **Cancelar:** tecla `Esc` ou clique fora do draft/painel.
+
+### 4.2. Edição por Arraste
+- **Mover evento:** arrastar um evento real para outro horário/dia.
+- **Resize:** alças no hover permitem ajustar início/fim.
+- **Feedback:** drag layer flutuante mostra o horário atual durante o movimento.
+
+## 5. Densidade de Informação (Eventos Curtos)
+
+- **Eventos curtos/médios:** exibem horário + título em uma linha compacta.
+- **Eventos longos:** exibem cabeçalho e descrição conforme espaço.
 ```

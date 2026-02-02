@@ -70,6 +70,15 @@ export default function WeekView({
     durationMinutes: number
     mode: 'move' | 'resize-start' | 'resize-end'
   } | null>(null)
+  const pendingDragRef = useRef<{
+    event: CalendarEventWithDates
+    startX: number
+    startY: number
+    grabOffsetMinutes: number
+    durationMinutes: number
+  } | null>(null)
+  const [isPendingDrag, setIsPendingDrag] = useState(false)
+  const DRAG_START_THRESHOLD_PX = 6
   const latestRangeRef = useRef<{ start: Date; end: Date } | null>(null)
   const lastPointerRef = useRef<{ x: number; y: number } | null>(null)
   const rafRef = useRef<number | null>(null)
@@ -462,6 +471,44 @@ export default function WeekView({
   }, [draggingEventId, onUpdateEventTime, referenceDate])
 
   useEffect(() => {
+    if (!isPendingDrag || !pendingDragRef.current) {
+      return
+    }
+
+    const onMove = (event: PointerEvent) => {
+      if (!pendingDragRef.current) return
+      const { startX, startY, event: targetEvent, grabOffsetMinutes, durationMinutes } =
+        pendingDragRef.current
+      const deltaX = event.clientX - startX
+      const deltaY = event.clientY - startY
+      if (Math.hypot(deltaX, deltaY) < DRAG_START_THRESHOLD_PX) {
+        return
+      }
+      pendingDragRef.current = null
+      setIsPendingDrag(false)
+      handleEventDragStart({
+        event: targetEvent,
+        grabOffsetMinutes,
+        durationMinutes,
+        clientX: event.clientX,
+        clientY: event.clientY,
+      })
+    }
+
+    const onUp = () => {
+      pendingDragRef.current = null
+      setIsPendingDrag(false)
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp, { once: true })
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+  }, [isPendingDrag])
+
+  useEffect(() => {
     if (!draftRef.current || !draft || !containerRef.current) {
       setPanelStyle(undefined)
       return
@@ -610,13 +657,14 @@ export default function WeekView({
                               const grabOffsetMinutes =
                                 Math.round(grabOffsetMinutesRaw / ROUND_STEP) *
                                 ROUND_STEP
-                              handleEventDragStart({
+                              pendingDragRef.current = {
                                 event,
+                                startX: eventPointer.clientX,
+                                startY: eventPointer.clientY,
                                 grabOffsetMinutes,
                                 durationMinutes,
-                                clientX: eventPointer.clientX,
-                                clientY: eventPointer.clientY,
-                              })
+                              }
+                              setIsPendingDrag(true)
                             }}
                           >
                             <div className="event-resize-handles">

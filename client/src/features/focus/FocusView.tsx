@@ -359,6 +359,8 @@ export default function FocusView({
             draft={draft}
             onDraftChange={setDraft}
             onDraftSelect={() => setSelectedId(null)}
+            popoverAlign={index >= days.length - 1 ? 'left' : 'right'}
+            onClosePopover={() => setSelectedId(null)}
             onDraftLayout={(rect) => {
               if (!rect || !containerRef.current) {
                 return
