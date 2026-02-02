@@ -221,12 +221,12 @@ export default function App() {
           <span className="brand-tagline">Organize o agora, simplifique o resto.</span>
         </div>
         <div className="app-header-actions">
-          <ThemeToggle value={theme} onChange={setTheme} />
           <ViewTabs
             options={views}
             value={activeView}
             onChange={setActiveView}
           />
+          <ThemeToggle value={theme} onChange={setTheme} />
           <button className="logout-button" type="button" onClick={handleLogout}>
             Sair
           </button>
