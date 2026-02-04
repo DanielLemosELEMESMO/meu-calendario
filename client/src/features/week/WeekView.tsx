@@ -618,6 +618,7 @@ export default function WeekView({
               const dayEvents = eventDates.filter((event) =>
                 isSameDay(event.start, day),
               )
+              const isToday = isSameDay(day, new Date())
               const align = dayIndex > 3 ? 'left' : 'right'
               const dayKey = day.toDateString()
               const gridRef = (node: HTMLDivElement | null) => {
@@ -640,6 +641,14 @@ export default function WeekView({
                       )
                     }
                   >
+                    {isToday && (
+                      <div
+                        className="now-line"
+                        style={{
+                          top: `${minutesSinceStart(new Date()) * PIXELS_PER_MINUTE}px`,
+                        }}
+                      />
+                    )}
                     <div className="events-layer">
                       {dayEvents.map((event) => {
                         const startMinutes = minutesSinceStart(event.start)

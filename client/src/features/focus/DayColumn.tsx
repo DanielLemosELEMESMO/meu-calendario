@@ -369,7 +369,7 @@ export default function DayColumn({
           ))}
           {isToday && (
             <div
-              className="now-line"
+              className="now-line now-line-focus"
               style={{
                 top: `${minutesSinceStart(new Date()) * PIXELS_PER_MINUTE}px`,
               }}

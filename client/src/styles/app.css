@@ -343,8 +343,12 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, var(--accent-3), transparent);
+  background: linear-gradient(90deg, #ff1f1f, transparent);
   z-index: 5;
+}
+
+.now-line-focus {
+  height: 3px;
 }
 
 .events-layer {
