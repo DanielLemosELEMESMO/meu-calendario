@@ -9,7 +9,7 @@ import type { ColorsPayload } from '../../models/colors'
 
 const PIXELS_PER_MINUTE = 1.1
 const ROUND_STEP = 5
-const FOCUS_LAYER_LEFT = 36
+const FOCUS_LAYER_LEFT = 25
 const FOCUS_LAYER_RIGHT = 10
 
 type FocusViewProps = {
