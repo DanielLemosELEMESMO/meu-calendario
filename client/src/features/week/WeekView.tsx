@@ -135,6 +135,20 @@ export default function WeekView({
     setDraft((current) => (current?.id === eventId ? null : current))
     setEditingEventId((current) => (current === eventId ? null : current))
   }
+  const handleTogglePreview = (eventId: string) => {
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+    setClosingId(null)
+    const nextSelectedId = selectedId === eventId ? null : eventId
+    setSelectedId(nextSelectedId)
+    if (nextSelectedId) {
+      setDraft(null)
+      setEditingEventId(null)
+      setContextMenu(null)
+    }
+  }
   const [isDraftDragging, setIsDraftDragging] = useState(false)
   const draftDragRef = useRef<{
     grabOffsetMinutes: number
@@ -677,6 +691,7 @@ export default function WeekView({
     })
     setEditingEventId(null)
     setSelectedId(null)
+    setContextMenu(null)
   }
 
   return (
@@ -804,7 +819,10 @@ export default function WeekView({
                             onContextMenu={(eventContext) => {
                               eventContext.preventDefault()
                               eventContext.stopPropagation()
-                              setSelectedId(event.id)
+                              setSelectedId(null)
+                              setClosingId(null)
+                              setDraft(null)
+                              setEditingEventId(null)
                               setContextMenu({
                                 event,
                                 x: eventContext.clientX,
@@ -844,16 +862,7 @@ export default function WeekView({
                               event={event}
                               density={density}
                               isExpanded={selectedId === event.id}
-                              onSelect={(eventId) =>
-                                setSelectedId((current) => {
-                                  if (closeTimerRef.current) {
-                                    window.clearTimeout(closeTimerRef.current)
-                                    closeTimerRef.current = null
-                                  }
-                                  setClosingId(null)
-                                  return current === eventId ? null : eventId
-                                })
-                              }
+                              onSelect={() => handleTogglePreview(event.id)}
                               onToggleComplete={onToggleComplete}
                             />
                             {selectedId === event.id && (
@@ -863,6 +872,7 @@ export default function WeekView({
                                 isClosing={closingId === event.id}
                                 onClose={requestClose}
                                 onEdit={() => handleStartEdit(event)}
+                                onDelete={handleDeleteEvent}
                                 onToggleComplete={onToggleComplete}
                               />
                             )}

@@ -44,6 +44,7 @@ type DayColumnProps = {
   }) => void
   draggingEventId: string | null
   onEventEdit: (event: CalendarEventWithDates) => void
+  onEventDelete: (eventId: string) => void
   onEventContextMenu: (
     event: CalendarEventWithDates,
     clientX: number,
@@ -69,6 +70,7 @@ export default function DayColumn({
   onEventResizeStart,
   draggingEventId,
   onEventEdit,
+  onEventDelete,
   onEventContextMenu,
   popoverAlign = 'right',
   onClosePopover,
@@ -584,6 +586,7 @@ export default function DayColumn({
               align={popoverAlign}
               onClose={onClosePopover}
               onEdit={() => onEventEdit(selectedEvent)}
+              onDelete={onEventDelete}
               showActions
               className="event-popover-floating"
               style={popoverStyle}

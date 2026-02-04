@@ -85,6 +85,21 @@ export default function MonthView({
     setEditingEventId((current) => (current === eventId ? null : current))
   }
 
+  const handleTogglePreview = (eventId: string) => {
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+    setClosingId(null)
+    const nextSelectedId = selectedId === eventId ? null : eventId
+    setSelectedId(nextSelectedId)
+    if (nextSelectedId) {
+      setDraft(null)
+      setEditingEventId(null)
+      setContextMenu(null)
+    }
+  }
+
   const requestClose = () => {
     if (!selectedId) {
       return
@@ -279,19 +294,15 @@ export default function MonthView({
                           : undefined
                       }
                       onClick={() => {
-                        if (closeTimerRef.current) {
-                          window.clearTimeout(closeTimerRef.current)
-                          closeTimerRef.current = null
-                        }
-                        setClosingId(null)
-                        setSelectedId((current) =>
-                          current === event.id ? null : event.id,
-                        )
+                        handleTogglePreview(event.id)
                       }}
                       onContextMenu={(eventContext) => {
                         eventContext.preventDefault()
                         eventContext.stopPropagation()
-                        setSelectedId(event.id)
+                        setSelectedId(null)
+                        setClosingId(null)
+                        setDraft(null)
+                        setEditingEventId(null)
                         setContextMenu({
                           event,
                           x: eventContext.clientX,
@@ -316,6 +327,7 @@ export default function MonthView({
                         isClosing={closingId === event.id}
                         onClose={requestClose}
                         onEdit={() => handleStartEdit(event)}
+                        onDelete={handleDeleteEvent}
                         onToggleComplete={onToggleComplete}
                       />
                     )}

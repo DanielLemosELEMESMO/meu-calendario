@@ -98,6 +98,15 @@ export default function FocusView({
     setContextMenu(null)
   }
 
+  const handleSelectPreview = (eventId: string | null) => {
+    setSelectedId(eventId)
+    if (eventId) {
+      setDraft(null)
+      setEditingEventId(null)
+      setContextMenu(null)
+    }
+  }
+
   const handleDeleteEvent = async (eventId: string) => {
     const shouldDelete = window.confirm('Excluir este evento?')
     if (!shouldDelete) return
@@ -504,16 +513,23 @@ export default function FocusView({
             events={eventsByDay[index]}
             highlightId={highlightedId}
             selectedId={selectedId}
-            onSelectEvent={setSelectedId}
+            onSelectEvent={handleSelectPreview}
             onToggleComplete={onToggleComplete}
             draft={draft}
             onDraftChange={(nextDraft) => {
               setDraft(nextDraft)
+              if (nextDraft) {
+                setSelectedId(null)
+                setContextMenu(null)
+              }
               if (nextDraft?.id.startsWith('draft-')) {
                 setEditingEventId(null)
               }
             }}
-            onDraftSelect={() => setSelectedId(null)}
+            onDraftSelect={() => {
+              setSelectedId(null)
+              setContextMenu(null)
+            }}
             popoverAlign={index >= days.length - 1 ? 'left' : 'right'}
             onClosePopover={() => setSelectedId(null)}
             onDraftLayout={setDraftAnchorNode}
@@ -521,8 +537,11 @@ export default function FocusView({
             onEventResizeStart={handleEventResizeStart}
             draggingEventId={draggingEventId}
             onEventEdit={handleStartEdit}
+            onEventDelete={handleDeleteEvent}
             onEventContextMenu={(event, clientX, clientY) => {
-              setSelectedId(event.id)
+              setSelectedId(null)
+              setDraft(null)
+              setEditingEventId(null)
               setContextMenu({ event, x: clientX, y: clientY })
             }}
           />
