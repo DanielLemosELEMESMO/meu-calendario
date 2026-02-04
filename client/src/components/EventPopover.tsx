@@ -6,6 +6,7 @@ type EventPopoverProps = {
   align?: 'left' | 'right'
   isClosing?: boolean
   onClose: () => void
+  onEdit?: (eventId: string) => void
   onToggleComplete?: (id: string) => void
   showActions?: boolean
   className?: string
@@ -18,6 +19,7 @@ export default function EventPopover({
   align = 'right',
   isClosing = false,
   onClose,
+  onEdit,
   onToggleComplete,
   showActions = true,
   className,
@@ -49,15 +51,26 @@ export default function EventPopover({
       {event.description && (
         <p className="popover-description">{event.description}</p>
       )}
-      {showActions && onToggleComplete && (
+      {showActions && (onToggleComplete || onEdit) && (
         <div className="popover-actions">
-          <button
-            className="popover-action"
-            type="button"
-            onClick={() => onToggleComplete(event.id)}
-          >
-            {event.completed ? 'Marcar pendente' : 'Concluir evento'}
-          </button>
+          {onEdit && (
+            <button
+              className="popover-action"
+              type="button"
+              onClick={() => onEdit(event.id)}
+            >
+              Editar
+            </button>
+          )}
+          {onToggleComplete && (
+            <button
+              className="popover-action"
+              type="button"
+              onClick={() => onToggleComplete(event.id)}
+            >
+              {event.completed ? 'Marcar pendente' : 'Concluir evento'}
+            </button>
+          )}
         </div>
       )}
     </div>

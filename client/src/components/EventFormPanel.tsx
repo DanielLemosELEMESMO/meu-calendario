@@ -7,6 +7,7 @@ type EventFormPanelProps = {
   onChange: (draft: EventDraft) => void
   onSave: () => void
   onCancel: () => void
+  mode?: 'create' | 'edit'
   className?: string
   style?: React.CSSProperties
   colors?: ColorsPayload | null
@@ -37,6 +38,7 @@ export default function EventFormPanel({
   onChange,
   onSave,
   onCancel,
+  mode = 'create',
   className,
   style,
   colors,
@@ -69,7 +71,7 @@ export default function EventFormPanel({
 
   return (
     <aside className={['event-form-panel', className].filter(Boolean).join(' ')} style={style}>
-      <h3>Novo evento</h3>
+      <h3>{mode === 'edit' ? 'Editar evento' : 'Novo evento'}</h3>
       <label className="event-form-field">
         <span>Titulo</span>
         <input
@@ -126,7 +128,7 @@ export default function EventFormPanel({
             <option value="">Padrao do calendario</option>
             {eventColors.map(([id, color]) => (
               <option key={id} value={id}>
-                {`Cor ${id}`}
+                {`Cor ${id} (${color.background})`}
               </option>
             ))}
           </select>
@@ -137,7 +139,7 @@ export default function EventFormPanel({
           Cancelar
         </button>
         <button type="button" className="event-form-save" onClick={onSave}>
-          Salvar
+          {mode === 'edit' ? 'Atualizar' : 'Salvar'}
         </button>
       </div>
     </aside>

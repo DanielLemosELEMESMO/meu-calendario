@@ -43,6 +43,12 @@ type DayColumnProps = {
     clientY: number
   }) => void
   draggingEventId: string | null
+  onEventEdit: (event: CalendarEventWithDates) => void
+  onEventContextMenu: (
+    event: CalendarEventWithDates,
+    clientX: number,
+    clientY: number,
+  ) => void
   popoverAlign?: 'left' | 'right'
   onClosePopover: () => void
 }
@@ -62,6 +68,8 @@ export default function DayColumn({
   onEventDragStart,
   onEventResizeStart,
   draggingEventId,
+  onEventEdit,
+  onEventContextMenu,
   popoverAlign = 'right',
   onClosePopover,
 }: DayColumnProps) {
@@ -413,6 +421,9 @@ export default function DayColumn({
                     } as CSSProperties
                   }
                   onPointerDown={(eventPointer) => {
+                    if (eventPointer.button !== 0) {
+                      return
+                    }
                     const target = eventPointer.target as HTMLElement | null
                     if (target?.closest('button')) {
                       return
@@ -440,6 +451,11 @@ export default function DayColumn({
                       durationMinutes,
                     }
                     setIsPendingDrag(true)
+                  }}
+                  onContextMenu={(eventContext) => {
+                    eventContext.preventDefault()
+                    eventContext.stopPropagation()
+                    onEventContextMenu(event, eventContext.clientX, eventContext.clientY)
                   }}
                 >
                   <div className="event-resize-handles">
@@ -567,7 +583,8 @@ export default function DayColumn({
               event={selectedEvent}
               align={popoverAlign}
               onClose={onClosePopover}
-              showActions={false}
+              onEdit={() => onEventEdit(selectedEvent)}
+              showActions
               className="event-popover-floating"
               style={popoverStyle}
               popoverFor={selectedId}

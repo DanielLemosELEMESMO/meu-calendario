@@ -31,7 +31,7 @@ export type CreateEventPayload = {
   start: string
   end: string
   calendarId?: string
-  colorId?: string
+  colorId?: string | null
   timeZone?: string
 }
 

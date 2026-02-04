@@ -5,7 +5,7 @@ import WeekView from './features/week/WeekView'
 import ViewTabs from './components/ViewTabs'
 import ThemeToggle from './components/ThemeToggle'
 import { eventRepository } from './data/repositories'
-import type { CalendarEvent, EventDraft } from './models/event'
+import type { CalendarEvent, CreateEventPayload, EventDraft } from './models/event'
 import type { ColorsPayload } from './models/colors'
 import { addDays, endOfDay, startOfDay } from './utils/dates'
 
@@ -152,6 +152,33 @@ export default function App() {
     await loadEvents()
   }
 
+  const onEditEvent = async (eventId: string, draft: EventDraft) => {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    await eventRepository.update(eventId, {
+      title: draft.title,
+      description: draft.description,
+      start: toOffsetISOString(draft.start),
+      end: toOffsetISOString(draft.end),
+      calendarId: draft.calendarId,
+      colorId: draft.colorId ?? null,
+      timeZone,
+    })
+    await loadEvents()
+  }
+
+  const onPatchEvent = async (
+    eventId: string,
+    payload: Partial<CreateEventPayload>,
+  ) => {
+    await eventRepository.update(eventId, payload)
+    await loadEvents()
+  }
+
+  const onDeleteEvent = async (eventId: string) => {
+    await eventRepository.delete(eventId)
+    await loadEvents()
+  }
+
   const onUpdateEventTime = async (
     eventId: string,
     start: Date,
@@ -241,6 +268,11 @@ export default function App() {
             referenceDate={referenceDate}
             onCreateEvent={onCreateEvent}
             onUpdateEventTime={onUpdateEventTime}
+            onEditEvent={onEditEvent}
+            onDeleteEvent={onDeleteEvent}
+            onUpdateEventColor={(eventId, colorId) =>
+              onPatchEvent(eventId, { colorId: colorId ?? null })
+            }
             colors={colors}
           />
         )}
@@ -251,6 +283,11 @@ export default function App() {
             referenceDate={referenceDate}
             onCreateEvent={onCreateEvent}
             onUpdateEventTime={onUpdateEventTime}
+            onEditEvent={onEditEvent}
+            onDeleteEvent={onDeleteEvent}
+            onUpdateEventColor={(eventId, colorId) =>
+              onPatchEvent(eventId, { colorId: colorId ?? null })
+            }
             colors={colors}
           />
         )}
@@ -259,6 +296,12 @@ export default function App() {
             events={events}
             onToggleComplete={onToggleComplete}
             referenceDate={referenceDate}
+            onEditEvent={onEditEvent}
+            onDeleteEvent={onDeleteEvent}
+            onUpdateEventColor={(eventId, colorId) =>
+              onPatchEvent(eventId, { colorId: colorId ?? null })
+            }
+            colors={colors}
           />
         )}
       </main>

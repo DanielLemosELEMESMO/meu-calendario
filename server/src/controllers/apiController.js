@@ -260,7 +260,7 @@ exports.updateEvent = async (req, res) => {
     const requestBody = {};
     if (title) requestBody.summary = title;
     if (typeof description !== 'undefined') requestBody.description = description;
-    if (typeof colorId !== 'undefined') requestBody.colorId = colorId;
+    if (typeof colorId !== 'undefined') requestBody.colorId = colorId ?? null;
     if (start) {
       requestBody.start = { dateTime: start, timeZone };
     }
@@ -317,6 +317,39 @@ exports.getColors = async (req, res) => {
     return res.json({ colors });
   } catch (error) {
     console.error('Erro ao buscar cores:', error);
+    return res.status(500).json({ error: 'server_error' });
+  }
+};
+
+exports.deleteEvent = async (req, res) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'invalid_event' });
+  }
+
+  try {
+    const oauth2Client = await getAuthorizedClient(req.userId);
+    if (!oauth2Client) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+
+    const calendar = getCalendarClient(oauth2Client);
+    await calendar.events.delete({
+      calendarId: 'primary',
+      eventId: id,
+    });
+
+    await pool.query(
+      `
+        delete from public.event_status
+        where user_id = $1 and event_id = $2
+      `,
+      [req.userId, id],
+    );
+
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('Erro ao excluir evento:', error);
     return res.status(500).json({ error: 'server_error' });
   }
 };

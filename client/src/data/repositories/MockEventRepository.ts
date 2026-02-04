@@ -1,4 +1,4 @@
-import type { CalendarEvent } from '../../models/event'
+import type { CalendarEvent, CreateEventPayload } from '../../models/event'
 import type { ColorsPayload } from '../../models/colors'
 import { createMockEvents } from '../mocks/mockEvents'
 import { loadEventCache, saveEventCache } from '../cache/localEventCache'
@@ -51,13 +51,7 @@ export class MockEventRepository implements EventRepository {
     return updated
   }
 
-  async create(payload: {
-    title: string
-    description?: string
-    start: string
-    end: string
-    calendarId?: string
-  }): Promise<CalendarEvent> {
+  async create(payload: CreateEventPayload): Promise<CalendarEvent> {
     const events = ensureEvents()
     const created: CalendarEvent = {
       id: `mock-${Date.now()}`,
@@ -75,13 +69,7 @@ export class MockEventRepository implements EventRepository {
 
   async update(
     eventId: string,
-    payload: {
-      title?: string
-      description?: string
-      start?: string
-      end?: string
-      calendarId?: string
-    },
+    payload: Partial<CreateEventPayload>,
   ): Promise<CalendarEvent> {
     const events = ensureEvents()
     const index = events.findIndex((event) => event.id === eventId)
@@ -91,11 +79,18 @@ export class MockEventRepository implements EventRepository {
     const updated: CalendarEvent = {
       ...events[index],
       ...payload,
+      colorId: payload.colorId ?? undefined,
       completed: events[index].completed,
     }
     const nextEvents = [...events]
     nextEvents[index] = updated
     saveEventCache(nextEvents)
     return updated
+  }
+
+  async delete(eventId: string): Promise<void> {
+    const events = ensureEvents()
+    const nextEvents = events.filter((event) => event.id !== eventId)
+    saveEventCache(nextEvents)
   }
 }

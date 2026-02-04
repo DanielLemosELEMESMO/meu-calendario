@@ -101,4 +101,17 @@ export class ApiEventRepository implements EventRepository {
     const updated = (await response.json()) as { event: CalendarEvent }
     return updated.event
   }
+
+  async delete(eventId: string): Promise<void> {
+    const response = await fetch(`/api/events/${eventId}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    })
+    if (response.status === 401) {
+      throw new Error('unauthorized')
+    }
+    if (!response.ok) {
+      throw new Error('Falha ao excluir evento.')
+    }
+  }
 }

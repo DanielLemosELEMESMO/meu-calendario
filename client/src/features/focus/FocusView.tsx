@@ -2,8 +2,9 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import DayColumn from './DayColumn'
 import type { CalendarEvent, CalendarEventWithDates, EventDraft } from '../../models/event'
 import { withDates } from '../../models/event'
-import { addDays, addMinutes, isSameDay, minutesSinceStart, startOfDay } from '../../utils/dates'
+import { addDays, isSameDay, minutesSinceStart, startOfDay } from '../../utils/dates'
 import EventFormPanel from '../../components/EventFormPanel'
+import EventQuickMenu from '../../components/EventQuickMenu'
 import type { ColorsPayload } from '../../models/colors'
 
 const PIXELS_PER_MINUTE = 1.1
@@ -22,6 +23,9 @@ type FocusViewProps = {
     end: Date,
     commit: boolean,
   ) => Promise<void>
+  onEditEvent: (eventId: string, draft: EventDraft) => Promise<void>
+  onDeleteEvent: (eventId: string) => Promise<void>
+  onUpdateEventColor: (eventId: string, colorId?: string) => Promise<void>
   colors: ColorsPayload | null
 }
 
@@ -31,11 +35,20 @@ export default function FocusView({
   referenceDate,
   onCreateEvent,
   onUpdateEventTime,
+  onEditEvent,
+  onDeleteEvent,
+  onUpdateEventColor,
   colors,
 }: FocusViewProps) {
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [draft, setDraft] = useState<EventDraft | null>(null)
+  const [editingEventId, setEditingEventId] = useState<string | null>(null)
+  const [contextMenu, setContextMenu] = useState<{
+    event: CalendarEventWithDates
+    x: number
+    y: number
+  } | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [panelStyle, setPanelStyle] = useState<React.CSSProperties | undefined>(
     undefined,
@@ -67,6 +80,32 @@ export default function FocusView({
       .getMinutes()
       .toString()
       .padStart(2, '0')}`
+
+  const toDraftFromEvent = (event: CalendarEventWithDates): EventDraft => ({
+    id: event.id,
+    title: event.title,
+    description: event.description,
+    start: new Date(event.start),
+    end: new Date(event.end),
+    calendarId: event.calendarId,
+    colorId: event.colorId,
+  })
+
+  const handleStartEdit = (event: CalendarEventWithDates) => {
+    setDraft(toDraftFromEvent(event))
+    setEditingEventId(event.id)
+    setSelectedId(null)
+    setContextMenu(null)
+  }
+
+  const handleDeleteEvent = async (eventId: string) => {
+    const shouldDelete = window.confirm('Excluir este evento?')
+    if (!shouldDelete) return
+    await onDeleteEvent(eventId)
+    setSelectedId((current) => (current === eventId ? null : current))
+    setDraft((current) => (current?.id === eventId ? null : current))
+    setEditingEventId((current) => (current === eventId ? null : current))
+  }
 
   useEffect(() => {
     if (!draft) {
@@ -101,6 +140,37 @@ export default function FocusView({
       document.removeEventListener('pointerdown', onPointerDown)
     }
   }, [draft])
+
+  useEffect(() => {
+    if (!contextMenu) {
+      return
+    }
+
+    const close = () => setContextMenu(null)
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target?.closest('.event-quick-menu')) {
+        return
+      }
+      close()
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        close()
+      }
+    }
+
+    document.addEventListener('pointerdown', onPointerDown)
+    window.addEventListener('resize', close)
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('resize', close)
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [contextMenu])
 
   const days = useMemo(() => {
     const today = startOfDay(referenceDate)
@@ -154,7 +224,11 @@ export default function FocusView({
       if (!target) {
         return
       }
-      if (!target.closest(`[data-event-id="${safeId}"]`)) {
+      if (
+        !target.closest(`[data-event-id="${safeId}"]`) &&
+        !target.closest(`[data-popover-for="${safeId}"]`) &&
+        !target.closest('.event-popover')
+      ) {
         setSelectedId(null)
       }
     }
@@ -352,13 +426,23 @@ export default function FocusView({
   }, [draggingEventId, onUpdateEventTime, referenceDate])
 
   useLayoutEffect(() => {
-    if (!draft || !draftAnchorNode) {
+    if (!draft) {
       setPanelStyle(undefined)
       return
     }
 
     const updatePanelPosition = () => {
-      const anchor = draftAnchorNode
+      const safeEditingId =
+        editingEventId &&
+        (typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+          ? CSS.escape(editingEventId)
+          : editingEventId.replace(/"/g, '\\"'))
+      const anchor =
+        safeEditingId && containerRef.current
+          ? containerRef.current.querySelector<HTMLDivElement>(
+              `[data-event-id="${safeEditingId}"] .event-card`,
+            )
+          : draftAnchorNode
       if (!anchor) return
       const rect = anchor.getBoundingClientRect()
       const panel = containerRef.current?.querySelector<HTMLElement>(
@@ -407,7 +491,7 @@ export default function FocusView({
         panelRafRef.current = null
       }
     }
-  }, [draft, draftAnchorNode])
+  }, [draft, draftAnchorNode, editingEventId])
 
   return (
     <section className="view-with-panel view-floating" ref={containerRef}>
@@ -423,7 +507,12 @@ export default function FocusView({
             onSelectEvent={setSelectedId}
             onToggleComplete={onToggleComplete}
             draft={draft}
-            onDraftChange={setDraft}
+            onDraftChange={(nextDraft) => {
+              setDraft(nextDraft)
+              if (nextDraft?.id.startsWith('draft-')) {
+                setEditingEventId(null)
+              }
+            }}
             onDraftSelect={() => setSelectedId(null)}
             popoverAlign={index >= days.length - 1 ? 'left' : 'right'}
             onClosePopover={() => setSelectedId(null)}
@@ -431,6 +520,11 @@ export default function FocusView({
             onEventDragStart={handleEventDragStart}
             onEventResizeStart={handleEventResizeStart}
             draggingEventId={draggingEventId}
+            onEventEdit={handleStartEdit}
+            onEventContextMenu={(event, clientX, clientY) => {
+              setSelectedId(event.id)
+              setContextMenu({ event, x: clientX, y: clientY })
+            }}
           />
         ))}
       </div>
@@ -451,18 +545,39 @@ export default function FocusView({
           </div>
         </div>
       )}
+      {contextMenu && (
+        <EventQuickMenu
+          event={contextMenu.event}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          colors={colors}
+          onClose={() => setContextMenu(null)}
+          onEdit={() => handleStartEdit(contextMenu.event)}
+          onDelete={() => handleDeleteEvent(contextMenu.event.id)}
+          onColorChange={(colorId) => onUpdateEventColor(contextMenu.event.id, colorId)}
+        />
+      )}
       {draft && (
         <EventFormPanel
           draft={draft}
           onChange={setDraft}
-          onCancel={() => setDraft(null)}
+          onCancel={() => {
+            setDraft(null)
+            setEditingEventId(null)
+          }}
           onSave={async () => {
             if (!draft.title.trim()) {
               return
             }
-            await onCreateEvent(draft)
+            if (editingEventId) {
+              await onEditEvent(editingEventId, draft)
+            } else {
+              await onCreateEvent(draft)
+            }
             setDraft(null)
+            setEditingEventId(null)
           }}
+          mode={editingEventId ? 'edit' : 'create'}
           className={`floating panel-${panelSide}`}
           style={panelStyle}
           colors={colors}

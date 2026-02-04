@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { CalendarEvent } from '../../models/event'
+import type { CalendarEvent, CalendarEventWithDates, EventDraft } from '../../models/event'
 import { withDates } from '../../models/event'
 import EventPopover from '../../components/EventPopover'
+import EventFormPanel from '../../components/EventFormPanel'
+import EventQuickMenu from '../../components/EventQuickMenu'
 import {
   addDays,
   formatDayNumber,
@@ -9,17 +11,26 @@ import {
   isSameDay,
   startOfDay,
 } from '../../utils/dates'
+import type { ColorsPayload } from '../../models/colors'
 
 type MonthViewProps = {
   events: CalendarEvent[]
   onToggleComplete: (eventId: string) => void
   referenceDate: Date
+  onEditEvent: (eventId: string, draft: EventDraft) => Promise<void>
+  onDeleteEvent: (eventId: string) => Promise<void>
+  onUpdateEventColor: (eventId: string, colorId?: string) => Promise<void>
+  colors: ColorsPayload | null
 }
 
 export default function MonthView({
   events,
   onToggleComplete,
   referenceDate,
+  onEditEvent,
+  onDeleteEvent,
+  onUpdateEventColor,
+  colors,
 }: MonthViewProps) {
   const firstDay = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1)
   const monthStart = startOfDay(firstDay)
@@ -30,9 +41,49 @@ export default function MonthView({
     addDays(monthStart, index - startOffset),
   )
   const eventDates = useMemo(() => events.map(withDates), [events])
+  const containerRef = useRef<HTMLElement | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [closingId, setClosingId] = useState<string | null>(null)
   const closeTimerRef = useRef<number | null>(null)
+  const [editingEventId, setEditingEventId] = useState<string | null>(null)
+  const [draft, setDraft] = useState<EventDraft | null>(null)
+  const [panelStyle, setPanelStyle] = useState<React.CSSProperties | undefined>(
+    undefined,
+  )
+  const [panelSide, setPanelSide] = useState<'left' | 'right'>('right')
+  const panelRafRef = useRef<number | null>(null)
+  const [contextMenu, setContextMenu] = useState<{
+    event: CalendarEventWithDates
+    x: number
+    y: number
+  } | null>(null)
+
+  const toDraftFromEvent = (event: CalendarEventWithDates): EventDraft => ({
+    id: event.id,
+    title: event.title,
+    description: event.description,
+    start: new Date(event.start),
+    end: new Date(event.end),
+    calendarId: event.calendarId,
+    colorId: event.colorId,
+  })
+
+  const handleStartEdit = (event: CalendarEventWithDates) => {
+    setDraft(toDraftFromEvent(event))
+    setEditingEventId(event.id)
+    setSelectedId(null)
+    setClosingId(null)
+    setContextMenu(null)
+  }
+
+  const handleDeleteEvent = async (eventId: string) => {
+    const shouldDelete = window.confirm('Excluir este evento?')
+    if (!shouldDelete) return
+    await onDeleteEvent(eventId)
+    setSelectedId((current) => (current === eventId ? null : current))
+    setDraft((current) => (current?.id === eventId ? null : current))
+    setEditingEventId((current) => (current === eventId ? null : current))
+  }
 
   const requestClose = () => {
     if (!selectedId) {
@@ -64,7 +115,10 @@ export default function MonthView({
       if (!target) {
         return
       }
-      if (!target.closest(`[data-event-id="${safeId}"]`)) {
+      if (
+        !target.closest(`[data-event-id="${safeId}"]`) &&
+        !target.closest('.event-popover')
+      ) {
         requestClose()
       }
     }
@@ -82,8 +136,103 @@ export default function MonthView({
     [],
   )
 
+  useEffect(() => {
+    if (!contextMenu) {
+      return
+    }
+
+    const close = () => setContextMenu(null)
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target?.closest('.event-quick-menu')) {
+        return
+      }
+      close()
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        close()
+      }
+    }
+
+    document.addEventListener('pointerdown', onPointerDown)
+    window.addEventListener('resize', close)
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('resize', close)
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [contextMenu])
+
+  useEffect(() => {
+    if (!draft || !editingEventId || !containerRef.current) {
+      setPanelStyle(undefined)
+      return
+    }
+
+    const updatePanelPosition = () => {
+      const safeEditingId =
+        typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+          ? CSS.escape(editingEventId)
+          : editingEventId.replace(/"/g, '\\"')
+      const anchor = containerRef.current?.querySelector<HTMLButtonElement>(
+        `[data-event-id="${safeEditingId}"] .month-event`,
+      )
+      if (!anchor) return
+      const rect = anchor.getBoundingClientRect()
+      const panel = containerRef.current?.querySelector<HTMLElement>(
+        '.event-form-panel.floating',
+      )
+      const panelRect = panel?.getBoundingClientRect()
+      const width = panelRect?.width ?? 280
+      const height = panelRect?.height ?? 320
+      const gap = 16
+      const fitsRight = rect.right + gap + width <= window.innerWidth
+      const fitsLeft = rect.left - gap - width >= 0
+      const useRight = fitsRight || !fitsLeft
+      const left = useRight ? rect.right + gap : rect.left - gap - width
+      const top = Math.min(
+        Math.max(12, rect.top),
+        Math.max(12, window.innerHeight - height - 12),
+      )
+      setPanelSide(useRight ? 'right' : 'left')
+      setPanelStyle({
+        position: 'fixed',
+        left: Math.max(12, Math.min(left, window.innerWidth - width - 12)),
+        top,
+        width,
+        maxHeight: window.innerHeight - 24,
+        overflowY: 'auto',
+      })
+    }
+
+    const scheduleUpdate = () => {
+      if (panelRafRef.current) return
+      panelRafRef.current = window.requestAnimationFrame(() => {
+        panelRafRef.current = null
+        updatePanelPosition()
+      })
+    }
+
+    updatePanelPosition()
+    window.requestAnimationFrame(updatePanelPosition)
+    window.addEventListener('resize', scheduleUpdate)
+    window.addEventListener('scroll', scheduleUpdate, true)
+    return () => {
+      window.removeEventListener('resize', scheduleUpdate)
+      window.removeEventListener('scroll', scheduleUpdate, true)
+      if (panelRafRef.current) {
+        window.cancelAnimationFrame(panelRafRef.current)
+        panelRafRef.current = null
+      }
+    }
+  }, [draft, editingEventId])
+
   return (
-    <section className="month-view">
+    <section className="month-view view-with-panel view-floating" ref={containerRef}>
       <header className="month-header">
         <h2>{formatMonthYear(referenceDate)}</h2>
         <p>Uma leitura calma do mes, com destaque para dias carregados.</p>
@@ -139,6 +288,16 @@ export default function MonthView({
                           current === event.id ? null : event.id,
                         )
                       }}
+                      onContextMenu={(eventContext) => {
+                        eventContext.preventDefault()
+                        eventContext.stopPropagation()
+                        setSelectedId(event.id)
+                        setContextMenu({
+                          event,
+                          x: eventContext.clientX,
+                          y: eventContext.clientY,
+                        })
+                      }}
                     >
                       <span
                         className={
@@ -156,6 +315,7 @@ export default function MonthView({
                         align={align}
                         isClosing={closingId === event.id}
                         onClose={requestClose}
+                        onEdit={() => handleStartEdit(event)}
                         onToggleComplete={onToggleComplete}
                       />
                     )}
@@ -169,6 +329,40 @@ export default function MonthView({
           )
         })}
       </div>
+      {contextMenu && (
+        <EventQuickMenu
+          event={contextMenu.event}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          colors={colors}
+          onClose={() => setContextMenu(null)}
+          onEdit={() => handleStartEdit(contextMenu.event)}
+          onDelete={() => handleDeleteEvent(contextMenu.event.id)}
+          onColorChange={(colorId) => onUpdateEventColor(contextMenu.event.id, colorId)}
+        />
+      )}
+      {draft && editingEventId && (
+        <EventFormPanel
+          draft={draft}
+          onChange={setDraft}
+          onCancel={() => {
+            setDraft(null)
+            setEditingEventId(null)
+          }}
+          onSave={async () => {
+            if (!draft.title.trim()) {
+              return
+            }
+            await onEditEvent(editingEventId, draft)
+            setDraft(null)
+            setEditingEventId(null)
+          }}
+          mode="edit"
+          className={`floating panel-${panelSide}`}
+          style={panelStyle}
+          colors={colors}
+        />
+      )}
     </section>
   )
 }

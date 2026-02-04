@@ -10,4 +10,5 @@ export interface EventRepository {
     eventId: string,
     payload: Partial<CreateEventPayload>,
   ): Promise<CalendarEvent>
+  delete(eventId: string): Promise<void>
 }

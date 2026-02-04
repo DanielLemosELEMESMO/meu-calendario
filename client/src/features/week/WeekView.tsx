@@ -5,6 +5,7 @@ import { withDates } from '../../models/event'
 import EventCard from '../../components/EventCard'
 import EventPopover from '../../components/EventPopover'
 import EventFormPanel from '../../components/EventFormPanel'
+import EventQuickMenu from '../../components/EventQuickMenu'
 import {
   addDays,
   addMinutes,
@@ -33,6 +34,9 @@ type WeekViewProps = {
     end: Date,
     commit: boolean,
   ) => Promise<void>
+  onEditEvent: (eventId: string, draft: EventDraft) => Promise<void>
+  onDeleteEvent: (eventId: string) => Promise<void>
+  onUpdateEventColor: (eventId: string, colorId?: string) => Promise<void>
   colors: ColorsPayload | null
 }
 
@@ -48,6 +52,9 @@ export default function WeekView({
   referenceDate,
   onCreateEvent,
   onUpdateEventTime,
+  onEditEvent,
+  onDeleteEvent,
+  onUpdateEventColor,
   colors,
 }: WeekViewProps) {
   const start = startOfDay(addDays(referenceDate, -referenceDate.getDay()))
@@ -55,6 +62,12 @@ export default function WeekView({
   const eventDates = useMemo(() => events.map(withDates), [events])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [closingId, setClosingId] = useState<string | null>(null)
+  const [editingEventId, setEditingEventId] = useState<string | null>(null)
+  const [contextMenu, setContextMenu] = useState<{
+    event: CalendarEventWithDates
+    x: number
+    y: number
+  } | null>(null)
   const closeTimerRef = useRef<number | null>(null)
   const [draft, setDraft] = useState<EventDraft | null>(null)
   const resizeStateRef = useRef<ResizeState | null>(null)
@@ -98,6 +111,30 @@ export default function WeekView({
       .getMinutes()
       .toString()
       .padStart(2, '0')}`
+  const toDraftFromEvent = (event: CalendarEventWithDates): EventDraft => ({
+    id: event.id,
+    title: event.title,
+    description: event.description,
+    start: new Date(event.start),
+    end: new Date(event.end),
+    calendarId: event.calendarId,
+    colorId: event.colorId,
+  })
+  const handleStartEdit = (event: CalendarEventWithDates) => {
+    setDraft(toDraftFromEvent(event))
+    setEditingEventId(event.id)
+    setSelectedId(null)
+    setClosingId(null)
+    setContextMenu(null)
+  }
+  const handleDeleteEvent = async (eventId: string) => {
+    const shouldDelete = window.confirm('Excluir este evento?')
+    if (!shouldDelete) return
+    await onDeleteEvent(eventId)
+    setSelectedId((current) => (current === eventId ? null : current))
+    setDraft((current) => (current?.id === eventId ? null : current))
+    setEditingEventId((current) => (current === eventId ? null : current))
+  }
   const [isDraftDragging, setIsDraftDragging] = useState(false)
   const draftDragRef = useRef<{
     grabOffsetMinutes: number
@@ -134,7 +171,10 @@ export default function WeekView({
       if (!target) {
         return
       }
-      if (!target.closest(`[data-event-id="${safeId}"]`)) {
+      if (
+        !target.closest(`[data-event-id="${safeId}"]`) &&
+        !target.closest('.event-popover')
+      ) {
         requestClose()
       }
     }
@@ -151,6 +191,37 @@ export default function WeekView({
     },
     [],
   )
+
+  useEffect(() => {
+    if (!contextMenu) {
+      return
+    }
+
+    const close = () => setContextMenu(null)
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target?.closest('.event-quick-menu')) {
+        return
+      }
+      close()
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        close()
+      }
+    }
+
+    document.addEventListener('pointerdown', onPointerDown)
+    window.addEventListener('resize', close)
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('resize', close)
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [contextMenu])
 
   useEffect(() => {
     if (!resizeMode || !draft || !resizeStateRef.current) {
@@ -513,13 +584,24 @@ export default function WeekView({
   }, [isPendingDrag])
 
   useEffect(() => {
-    if (!draftRef.current || !draft || !containerRef.current) {
+    if (!draft || !containerRef.current) {
       setPanelStyle(undefined)
       return
     }
     const updatePanelPosition = () => {
-      if (!draftRef.current) return
-      const rect = draftRef.current.getBoundingClientRect()
+      const safeEditingId =
+        editingEventId &&
+        (typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+          ? CSS.escape(editingEventId)
+          : editingEventId.replace(/"/g, '\\"'))
+      const anchor =
+        safeEditingId
+          ? containerRef.current?.querySelector<HTMLDivElement>(
+              `[data-event-id="${safeEditingId}"] .event-card`,
+            )
+          : draftRef.current
+      if (!anchor) return
+      const rect = anchor.getBoundingClientRect()
       const panel = containerRef.current?.querySelector<HTMLElement>(
         '.event-form-panel.floating',
       )
@@ -566,7 +648,7 @@ export default function WeekView({
         panelRafRef.current = null
       }
     }
-  }, [draft])
+  }, [draft, editingEventId])
 
   const handleGridPointerDown = (
     day: Date,
@@ -593,6 +675,7 @@ export default function WeekView({
       start: startTime,
       end: endTime,
     })
+    setEditingEventId(null)
     setSelectedId(null)
   }
 
@@ -683,6 +766,9 @@ export default function WeekView({
                               } as CSSProperties
                             }
                             onPointerDown={(eventPointer) => {
+                              if (eventPointer.button !== 0) {
+                                return
+                              }
                               const target = eventPointer.target as HTMLElement | null
                               if (target?.closest('button')) {
                                 return
@@ -714,6 +800,16 @@ export default function WeekView({
                                 durationMinutes,
                               }
                               setIsPendingDrag(true)
+                            }}
+                            onContextMenu={(eventContext) => {
+                              eventContext.preventDefault()
+                              eventContext.stopPropagation()
+                              setSelectedId(event.id)
+                              setContextMenu({
+                                event,
+                                x: eventContext.clientX,
+                                y: eventContext.clientY,
+                              })
                             }}
                           >
                             <div className="event-resize-handles">
@@ -766,6 +862,7 @@ export default function WeekView({
                                 align={align}
                                 isClosing={closingId === event.id}
                                 onClose={requestClose}
+                                onEdit={() => handleStartEdit(event)}
                                 onToggleComplete={onToggleComplete}
                               />
                             )}
@@ -889,18 +986,39 @@ export default function WeekView({
           </div>
         </div>
       )}
+      {contextMenu && (
+        <EventQuickMenu
+          event={contextMenu.event}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          colors={colors}
+          onClose={() => setContextMenu(null)}
+          onEdit={() => handleStartEdit(contextMenu.event)}
+          onDelete={() => handleDeleteEvent(contextMenu.event.id)}
+          onColorChange={(colorId) => onUpdateEventColor(contextMenu.event.id, colorId)}
+        />
+      )}
       {draft && (
         <EventFormPanel
           draft={draft}
           onChange={setDraft}
-          onCancel={() => setDraft(null)}
+          onCancel={() => {
+            setDraft(null)
+            setEditingEventId(null)
+          }}
           onSave={async () => {
             if (!draft.title.trim()) {
               return
             }
-            await onCreateEvent(draft)
+            if (editingEventId) {
+              await onEditEvent(editingEventId, draft)
+            } else {
+              await onCreateEvent(draft)
+            }
             setDraft(null)
+            setEditingEventId(null)
           }}
+          mode={editingEventId ? 'edit' : 'create'}
           className={`floating panel-${panelSide}`}
           style={panelStyle}
           colors={colors}
