@@ -345,6 +345,7 @@
   height: 2px;
   background: linear-gradient(90deg, #ff1f1f, transparent);
   z-index: 5;
+  pointer-events: none;
 }
 
 .now-line-focus {
